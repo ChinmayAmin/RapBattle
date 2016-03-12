@@ -1,6 +1,8 @@
 'use strict';
 
 var request = require('request');
+var syllable = require('syllable'); //Syllable count Use case: syllable(phrase)
+var moby = require('moby'); //Thesaurus Use case: moby.search(word)
 
 var _topics = [
     "pleasure",
