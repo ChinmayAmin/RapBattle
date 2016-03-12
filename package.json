@@ -1,5 +1,5 @@
 {
-  "name": "lodash",
+  "name": "rapBattle",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -17,7 +17,9 @@
   },
   "homepage": "https://github.com/ChinmayAmin/RapBattle#readme",
   "dependencies": {
+    "lodash": "^4.6.1",
     "moby": "^1.1.1",
+    "num2text": "^1.0.2",
     "request": "^2.69.0",
     "syllable": "^0.1.4"
   }

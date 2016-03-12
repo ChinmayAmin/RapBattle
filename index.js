@@ -3,6 +3,8 @@
 var request = require('request');
 var syllable = require('syllable'); //Syllable count Use case: syllable(phrase)
 var moby = require('moby'); //Thesaurus Use case: moby.search(word)
+var _ = require('lodash');
+var num2text = require('num2text');
 
 var _topics = [
     "pleasure",
@@ -376,7 +378,17 @@ function getRapLine(intent) {
         rapLine = intent.slots.SevenSyllableLine.value;
     }
 
-    return rapLine;
+    var wordList = rapLine.split(' ');
+    var literalWord = '';
+    _.each(wordList, function(word){
+      if(parseInt(word)){
+        literalWord += num2text.translate(word) + ' ';
+      } else {
+        literalWord += word + ' ';
+      }
+    })
+
+    return literalWord;
 }
 
 function iterateLine(rapLine) {
