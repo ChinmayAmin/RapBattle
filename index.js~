@@ -266,7 +266,7 @@ var questions = [
 
 // Route the incoming request based on type (LaunchRequest, IntentRequest,
 // etc.) The JSON body of the request is provided in the event parameter.
-exports.handler = function (event, context) {
+exports.handler = function (event, context, debug) {
     try {
         console.log("event.session.application.applicationId=" + event.session.application.applicationId);
 
@@ -300,7 +300,11 @@ exports.handler = function (event, context) {
             context.succeed();
         }
     } catch (e) {
-        context.fail("Exception: " + e);
+        if (debug) {
+            console.log(e.stack);
+        } else {
+            context.fail("Exception: " + e);
+        }
     }
 };
 
@@ -389,19 +393,25 @@ var CARD_TITLE = "Reindeer Games"; // Be sure to change this for your skill.
 
 function getWelcomeResponse(callback) {
     var sessionAttributes = {},
-        speechOutput = 'Welcome to Rap Battle! I will give you a random topic, try to rap about it. Let us begin. ',
+        speechOutput = "Reindeer Games. I will ask you " + GAME_LENGTH.toString()
+            + " questions, try to get as many right as you can. Just say the number of the answer. Let's begin. ",
         shouldEndSession = false,
-        rapTopic = "Trump",
+
         gameQuestions = populateGameQuestions(),
         correctAnswerIndex = Math.floor(Math.random() * (ANSWER_COUNT)), // Generate a random index for the correct answer, from 0 to 3
         roundAnswers = populateRoundAnswers(gameQuestions, 0, correctAnswerIndex),
+
         currentQuestionIndex = 0,
         spokenQuestion = Object.keys(questions[gameQuestions[currentQuestionIndex]])[0],
-        repromptText = "The topic is. " + rapTopic;
+        repromptText = "Question 1. " + spokenQuestion + " ",
 
+        i, j;
+
+    for (i = 0; i < ANSWER_COUNT; i++) {
+        repromptText += (i+1).toString() + ". " + roundAnswers[i] + ". "
+    }
     speechOutput += repromptText;
     sessionAttributes = {
-        "rapTopic": rapTopic,
         "speechOutput": repromptText,
         "repromptText": repromptText,
         "currentQuestionIndex": currentQuestionIndex,
@@ -480,7 +490,7 @@ function handleAnswerRequest(intent, session, callback) {
     var speechOutput = "";
     var sessionAttributes = {};
     var gameInProgress = session.attributes && session.attributes.questions;
-    var answerSlotValid = isValidRap(intent);
+    var answerSlotValid = isAnswerSlotValid(intent);
     var userGaveUp = intent.name === "DontKnowIntent";
 
     if (!gameInProgress) {
@@ -573,8 +583,11 @@ function handleGetHelpRequest(intent, session, callback) {
 
     // Do not edit the help dialogue. This has been created by the Alexa team to demonstrate best practices.
 
-    var speechOutput = "I will give you a random topic, try your best to rap about it. I'll drop the beat for you.",
-        repromptText = "To respond, start by saying a sentence about the topic. "
+    var speechOutput = "I will ask you " + GAME_LENGTH + " multiple choice questions. Respond with the number of the answer. "
+        + "For example, say one, two, three, or four. To start a new game at any time, say, start game. "
+        + "To repeat the last question, say, repeat. "
+        + "Would you like to keep playing?",
+        repromptText = "To give an answer to a question, respond with the number of the answer . "
         + "Would you like to keep playing?";
         var shouldEndSession = false;
     callback(session.attributes,
@@ -587,9 +600,10 @@ function handleFinishSessionRequest(intent, session, callback) {
         buildSpeechletResponseWithoutCard("Good bye!", "", true));
 }
 
-function isValidRap(intent) {
-    console.log(intent.slots.Answer.value);
-    return true;
+function isAnswerSlotValid(intent) {
+    var answerSlotFilled = intent.slots && intent.slots.Answer && intent.slots.Answer.value;
+    var answerSlotIsInt = answerSlotFilled && !isNaN(parseInt(intent.slots.Answer.value));
+    return answerSlotIsInt && parseInt(intent.slots.Answer.value) < (ANSWER_COUNT + 1) && parseInt(intent.slots.Answer.value) > 0;
 }
 
 // ------- Helper functions to build responses -------
