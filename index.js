@@ -1,6 +1,6 @@
 'use strict';
 
-var request = require('request');
+//var request = require('request');
 
 var _topics = [
     "pleasure",
@@ -171,6 +171,10 @@ function onIntent(intentRequest, session, callback) {
     // dispatch custom intents to handlers here
     if ("AnswerIntent" === intentName) {
         handleAnswerRequest(intent, session, callback);
+    }else if ("PlayerNameIntent" === intentName) {
+        handlePlayerNameRequest(intent, session, callback);
+    }else if("PlayerNumberIntent" === intentName) {
+        handlePlayerCountRequest(intent, session, callback);
     } else if ("AnswerOnlyIntent" === intentName) {
         handleAnswerRequest(intent, session, callback);
     } else if ("DontKnowIntent" === intentName) {
@@ -238,11 +242,92 @@ function caluculateRapScore() {
 	return 10;
 }
 
+function handlePlayerCountRequest(intent, session, callback) {
+    var speechOutput = "";
+    var sessionAttributes = {};
+    var gameInProgress = session.attributes && session.attributes.rapTopic;
+    var countSlotValid = isValidNumber(intent);
+    if (!gameInProgress) {
+        // If the user responded with an answer but there is no game in progress, ask the user
+        // if they want to start a new game. Set a flag to track that we've prompted the user.
+        sessionAttributes.userPromptedToContinue = true;
+        speechOutput = "There is no game in progress. Do you want to start a new game? ";
+    } else if (!countSlotValid) {
+        //Award points based on what the user said here
+        speechOutput = "You don't know what a number is? You are really dumb!";
+    } else {
+        var players = [];
+        var playerCount = intent.slots.Count.value;
+        speechOutput += "Player 1, what is your name?";
+        sessionAttributes = {
+            "players" : players,
+            "playerCount" : playerCount,
+            "speechOutput": speechOutput,
+            "repromptText": speechOutput
+        };
+    }
+    callback(sessionAttributes,
+        buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, false));
+}
+
+function handlePlayerNameRequest(intent, session, callback) {
+    var speechOutput = "";
+    var sessionAttributes = {};
+    var gameInProgress = session.attributes;
+    var nameSlotValid = isValidName(intent);
+
+    if (!gameInProgress) {
+        // If the user responded with an answer but there is no game in progress, ask the user
+        // if they want to start a new game. Set a flag to track that we've prompted the user.
+        sessionAttributes.userPromptedToContinue = true;
+        speechOutput = "There is no game in progress. Do you want to start a new game? ";
+        callback(sessionAttributes,
+            buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, false));
+    } else if (!nameSlotValid) {
+        //Award points based on what the user said here
+        var reprompt = session.attributes.speechOutput;
+        speechOutput = "You name is not a name. You are not from Planet Earth.";
+        callback(session.attributes,
+            buildSpeechletResponse(CARD_TITLE, speechOutput, reprompt, false));
+    } else {
+        var speechOutputAnalysis = "";
+        var players = session.attributes.players;
+        players.push(intent.slots.Name.value);
+        var playerNumber = session.attributes.players.length;
+        var nextPlayerNumber = playerNumber+1;
+
+        // this would be set in the future by getting user data
+        var playerMessage =  ", you have not played before. ";
+        if (playerNumber  === parseInt(session.attributes.playerCount)) {
+            var rapTopic = generateTopic();
+            var message = "The topic is " + rapTopic + ". " + players[0] + ", get ready to give your first";
+            speechOutput += "Welcome " + players[playerNumber-1] +  playerMessage + message;
+            sessionAttributes = {
+                "players" : players,
+                "playerCount" : session.attributes.playerCount,
+                "rapTopic": rapTopic,
+                "speechOutput": speechOutput,
+                "repromptText": speechOutput
+            };
+        }else {
+            speechOutput += "Welcome " + players[playerNumber-1] + playerMessage + "Player " + nextPlayerNumber + " , what is your name?";
+            sessionAttributes = {
+                "players": players,
+                "speechOutput": speechOutput,
+                "playerCount" : session.attributes.playerCount,
+                "repromptText": speechOutput
+            };
+        }
+        callback(sessionAttributes,
+            buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, false));
+    }
+}
+
 function handleAnswerRequest(intent, session, callback) {
     var speechOutput = "";
     var sessionAttributes = {};
     var gameInProgress = session.attributes && session.attributes.rapTopic;
-    var answerSlotValid = isValidRap(intent);
+    var answerSlotValid = isValidRap(intent.slots.Name.value);
     var userGaveUp = intent.name === "DontKnowIntent";
     var score;
     if (!gameInProgress) {
@@ -311,6 +396,18 @@ function handleFinishSessionRequest(intent, session, callback) {
 function isValidRap(intent) {
     console.log(intent.slots.Answer.value);
     return true;
+}
+
+function isValidName(intent) {
+    var answerSlotFilled = intent.slots && intent.slots.Name && intent.slots.Name.value;
+    var answerSlotIsName = /[A-Z]/.test( intent.slots.Name.value[0]);
+    return answerSlotIsName;
+}
+
+function isValidNumber(intent) {
+    var answerSlotFilled = intent.slots && intent.slots.Count && intent.slots.Count.value;
+    var answerSlotIsInt = answerSlotFilled && !isNaN(parseInt(intent.slots.Count.value));
+    return answerSlotIsInt;
 }
 
 // ------- Helper functions to build responses -------
