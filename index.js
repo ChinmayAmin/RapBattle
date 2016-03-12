@@ -15,6 +15,60 @@
 
 'use strict';
 
+var _topics = [
+    "pleasure",
+    "trump",
+    "woman",
+    "drake",
+    "obama",
+    "canteen",
+    "food",
+    "fettywap",
+    "bieber",
+    "phones",
+    "iphone",
+    "android",
+    "dogs",
+    "cats",
+    "people",
+    "trekkies",
+    "old people",
+    "free food",
+    "knees weak",
+    "paris",
+    "soccer",
+    "leafs",
+    "raptors",
+    "wedding",
+    "marriage",
+    "holiday",
+    "stealing",
+    "uber",
+    "glasses",
+    "drinks",
+    "deadpool",
+    "penguin",
+    "fall",
+    "winter",
+    "spring",
+    "summer",
+    "clouds",
+    "chair",
+    "plane",
+    "toilet",
+    "grass",
+    "air",
+    "cereal",
+    "car",
+    "fish",
+    "tv",
+    "bears",
+    "flowers",
+    "birds",
+    "book",
+    "your crush",
+    "book"
+];
 /**
  * When editing your questions pay attention to your punctuation. Make sure you use question marks or periods.
  * Make sure the first answer is the correct one. Set at least 4 answers, any extras will be shuffled in.
@@ -24,7 +78,7 @@
 // etc.) The JSON body of the request is provided in the event parameter.
 exports.handler = function (event, context) {
     try {
-        console.log("event.session.application.applicationId=" + event.session.application.applicationId);
+        // console.log("event.session.application.applicationId=" + event.session.application.applicationId);
 
         /**
          * Uncomment this if statement and populate with your skill's application ID to
@@ -139,6 +193,11 @@ function onSessionEnded(sessionEndedRequest, session) {
 
 // ------- Skill specific business logic -------
 
+function generateTopic() {
+    var randomIndex = Math.floor(Math.random() * _topics.length) + 0;
+    return _topics[randomIndex];
+}
+
 var ANSWER_COUNT = 4;
 var GAME_LENGTH = 5;
 var CARD_TITLE = "Reindeer Games"; // Be sure to change this for your skill.
@@ -147,7 +206,7 @@ function getWelcomeResponse(callback) {
     var sessionAttributes = {},
         speechOutput = 'Welcome to Rap Battle! I will give you a random topic, try to rap about it. Let us begin. ',
         shouldEndSession = false,
-        rapTopic = "Trump",
+        rapTopic = generateTopic(),
         repromptText = "The topic is. " + rapTopic;
 
     speechOutput += repromptText;
@@ -171,7 +230,7 @@ function handleAnswerRequest(intent, session, callback) {
     var gameInProgress = session.attributes && session.attributes.rapTopic;
     var answerSlotValid = isValidRap(intent);
     var userGaveUp = intent.name === "DontKnowIntent";
-
+    var score;
     if (!gameInProgress) {
         // If the user responded with an answer but there is no game in progress, ask the user
         // if they want to start a new game. Set a flag to track that we've prompted the user.
@@ -182,19 +241,19 @@ function handleAnswerRequest(intent, session, callback) {
     } else if (!answerSlotValid && !userGaveUp) {
 	//Award points based on what the user said here
         var reprompt = session.attributes.speechOutput;
-        var speechOutput = "You are a dumbass. This is not how you rap.";
+        speechOutput = "You are a dumbass. This is not how you rap.";
         callback(session.attributes,
             buildSpeechletResponse(CARD_TITLE, speechOutput, reprompt, false));
     } else {
         var speechOutputAnalysis = "";
-            speechOutput += userGaveUp ? "GO" : "GO",
-            score = caluculateRapScore();
+        speechOutput += userGaveUp ? "Go home Son" : "";
+        score = caluculateRapScore();
  		
             sessionAttributes = {
                "rapTopic": rapTopic,
-		"speechOutput": repromptText,
-		"repromptText": repromptText,
-		"score": 0
+        		"speechOutput": repromptText,
+        		"repromptText": repromptText,
+        		"score": 0
             };
             callback(sessionAttributes,
                 buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, false));
