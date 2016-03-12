@@ -14,6 +14,8 @@
  */
 
 'use strict';
+var request = require('request');
+
 
 /**
  * When editing your questions pay attention to your punctuation. Make sure you use question marks or periods.
@@ -189,7 +191,7 @@ function handleAnswerRequest(intent, session, callback) {
         var speechOutputAnalysis = "";
             speechOutput += userGaveUp ? "GO" : "GO",
             score = caluculateRapScore();
- 		
+
             sessionAttributes = {
                "rapTopic": rapTopic,
 		"speechOutput": repromptText,
@@ -286,4 +288,14 @@ function buildResponse(sessionAttributes, speechletResponse) {
         sessionAttributes: sessionAttributes,
         response: speechletResponse
     };
+}
+
+function rhymeLookup(rhyme) {
+  //This function takes in an word input and returns a JSON of words that rhyme with the input word
+  //Params of JSON include word, number of variables, and how closely the word rhymes with input word
+  request('https://api.datamuse.com/words?rel_rhy=' +rhyme, function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+      console.log(JSON.parse(body));
+      return JSON.parse(body);
+    }
 }

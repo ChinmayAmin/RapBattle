@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/ChinmayAmin/RapBattle/issues"
   },
-  "homepage": "https://github.com/ChinmayAmin/RapBattle#readme"
+  "homepage": "https://github.com/ChinmayAmin/RapBattle#readme",
+  "dependencies": {
+    "request": "^2.69.0"
+  }
 }
