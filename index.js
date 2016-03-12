@@ -266,7 +266,7 @@ var questions = [
 
 // Route the incoming request based on type (LaunchRequest, IntentRequest,
 // etc.) The JSON body of the request is provided in the event parameter.
-exports.handler = function (event, context) {
+exports.handler = function (event, context, debug) {
     try {
         console.log("event.session.application.applicationId=" + event.session.application.applicationId);
 
@@ -300,7 +300,11 @@ exports.handler = function (event, context) {
             context.succeed();
         }
     } catch (e) {
-        context.fail("Exception: " + e);
+        if (debug) {
+            console.log(e.stack);
+        } else {
+            context.fail("Exception: " + e);
+        }
     }
 };
 
