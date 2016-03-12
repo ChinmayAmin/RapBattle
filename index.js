@@ -171,15 +171,7 @@ function onIntent(intentRequest, session, callback) {
     }
 
     // dispatch custom intents to handlers here
-    if ("AnswerIntent" === intentName) {
-        handleAnswerRequest(intent, session, callback);
-    } else if ("AnswerOnlyIntent" === intentName) {
-        handleAnswerRequest(intent, session, callback);
-    } else if ("DontKnowIntent" === intentName) {
-        handleAnswerRequest(intent, session, callback);
-    } else if ("AMAZON.YesIntent" === intentName) {
-        handleAnswerRequest(intent, session, callback);
-    } else if ("AMAZON.NoIntent" === intentName) {
+    if ("RapLine" === intentName) {
         handleAnswerRequest(intent, session, callback);
     } else if ("AMAZON.StartOverIntent" === intentName) {
         getWelcomeResponse(callback);
@@ -192,7 +184,7 @@ function onIntent(intentRequest, session, callback) {
     } else if ("AMAZON.CancelIntent" === intentName) {
         handleFinishSessionRequest(intent, session, callback);
     } else {
-        throw "Invalid intent";
+        throw "Invalid intent " + intentName;
     }
 }
 
@@ -216,16 +208,16 @@ function generateTopic() {
 
 var ANSWER_COUNT = 4;
 var GAME_LENGTH = 5;
-var CARD_TITLE = "Reindeer Games"; // Be sure to change this for your skill.
+var CARD_TITLE = "Rap Battle"; // Be sure to change this for your skill.
 
 function getWelcomeResponse(callback) {
     var sessionAttributes = {},
-        speechOutput = 'Welcome to Rap Battle! I will give you a random topic, try to rap about it. Let us begin. ',
-        shouldEndSession = false,
         rapTopic = generateTopic(),
-        repromptText = "The topic is. " + rapTopic;
-
-    speechOutput += repromptText;
+        speechOutput = 'Welcome to Rap Battle! Your topic is ' + rapTopic + '.... Player one, get ready to give the ' +
+            'first five syllable line of a Haiku about ' + rapTopic
+            + '. <break time="1s"/> Three <break time="1s"/> two <break time="1s"/> one, you\'re on!',
+        shouldEndSession = false,
+        repromptText = "The topic is " + rapTopic;
     sessionAttributes = {
         "rapTopic": rapTopic,
         "speechOutput": repromptText,
@@ -261,18 +253,19 @@ function handleAnswerRequest(intent, session, callback) {
         callback(session.attributes,
             buildSpeechletResponse(CARD_TITLE, speechOutput, reprompt, false));
     } else {
-        var speechOutputAnalysis = "";
-        speechOutput += userGaveUp ? "Go home Son" : "";
+        var successResult = 'Very good. Here is your Haiku: <break time="1s"/>' + getRapLine(intent);
+        var repromptText = "Rap topic is " + session.attributes.rapTopic;
+        speechOutput += userGaveUp ? "Go home Son" : successResult;
         score = caluculateRapScore();
 
-            sessionAttributes = {
-               "rapTopic": rapTopic,
-                "speechOutput": repromptText,
-                "repromptText": repromptText,
-                "score": 0
-            };
+        sessionAttributes = {
+           "rapTopic": session.attributes.rapTopic,
+            "speechOutput": repromptText,
+            "repromptText": repromptText,
+            "score": score
+        };
             callback(sessionAttributes,
-                buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, false));
+                buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, true));
     }
 }
 
@@ -311,8 +304,7 @@ function handleFinishSessionRequest(intent, session, callback) {
 }
 
 function isValidRap(intent) {
-    console.log(intent.slots.Answer.value);
-    return true;
+    return getRapLine(intent) || false;
 }
 
 // ------- Helper functions to build responses -------
@@ -321,8 +313,8 @@ function isValidRap(intent) {
 function buildSpeechletResponse(title, output, repromptText, shouldEndSession) {
     return {
         outputSpeech: {
-            type: "PlainText",
-            text: output
+            type: "SSML",
+            ssml: '<speak>' + output + '</speak>'
         },
         card: {
             type: "Simple",
@@ -331,8 +323,8 @@ function buildSpeechletResponse(title, output, repromptText, shouldEndSession) {
         },
         reprompt: {
             outputSpeech: {
-                type: "PlainText",
-                text: repromptText
+                type: "SSML",
+                ssml: '<speak>' + repromptText + '</speak>'
             }
         },
         shouldEndSession: shouldEndSession
@@ -371,4 +363,18 @@ function rhymeLookup(rhyme, callback) {
           callback(JSON.parse(body));
         }
     });
+}
+
+function getRapLine(intent) {
+    if(!intent.slots) {
+        return null;
+    }
+    var rapLine = "";
+    if(intent.slots.FiveSyllableLine && intent.slots.FiveSyllableLine.value) {
+       rapLine =  intent.slots.FiveSyllableLine.value;
+    } else if(intent.slots.SevenSyllableLine && intent.slots.SevenSyllableLine.value) {
+        rapLine = intent.slots.SevenSyllableLine.value;
+    }
+
+    return rapLine;
 }
