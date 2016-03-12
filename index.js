@@ -354,7 +354,8 @@ function rhymeLookup(rhyme) {
   //Params of JSON include word, number of variables, and how closely the word rhymes with input word
   request('https://api.datamuse.com/words?rel_rhy=' +rhyme, function (error, response, body) {
     if (!error && response.statusCode == 200) {
-      console.log(JSON.parse(body));
-      return JSON.parse(body);
+          console.log(JSON.parse(body));
+          return JSON.parse(body);
+        }
     }
 }
