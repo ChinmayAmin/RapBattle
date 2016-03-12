@@ -357,5 +357,5 @@ function rhymeLookup(rhyme) {
           console.log(JSON.parse(body));
           return JSON.parse(body);
         }
-    }
+    });
 }
