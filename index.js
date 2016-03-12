@@ -247,9 +247,9 @@ function handleAnswerRequest(intent, session, callback) {
         callback(sessionAttributes,
             buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, false));
     } else if (!answerSlotValid && !userGaveUp) {
-	//Award points based on what the user said here
-        var reprompt = session.attributes.speechOutput;
-        speechOutput = "You are a dumbass. This is not how you rap.";
+	      //Award points based on what the user said here
+        speechOutput = 'That is not how a haiku works. Your line needs to have 5 syllables but it has ' + syllable(getRapLine(intent)) + ' syllables.';
+        var reprompt = 'The topic is ' + session.attributes.rapTopic;
         callback(session.attributes,
             buildSpeechletResponse(CARD_TITLE, speechOutput, reprompt, false));
     } else {
@@ -304,7 +304,7 @@ function handleFinishSessionRequest(intent, session, callback) {
 }
 
 function isValidRap(intent) {
-    return getRapLine(intent) || false;
+    return (syllable(getRapLine(intent)) === 5 || syllable(getRapLine(intent)) === 7);
 }
 
 // ------- Helper functions to build responses -------
