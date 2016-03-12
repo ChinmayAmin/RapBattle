@@ -253,7 +253,7 @@ function handleAnswerRequest(intent, session, callback) {
         callback(session.attributes,
             buildSpeechletResponse(CARD_TITLE, speechOutput, reprompt, false));
     } else {
-        var successResult = 'Very good. Here is your Haiku: <break time="1s"/>' + getRapLine(intent);
+        var successResult = 'Very good. Here is your Haiku: <break time="1s"/>' + iterateLine(getRapLine(intent));
         var repromptText = "Rap topic is " + session.attributes.rapTopic;
         speechOutput += userGaveUp ? "Go home Son" : successResult;
         score = caluculateRapScore();
@@ -377,4 +377,8 @@ function getRapLine(intent) {
     }
 
     return rapLine;
+}
+
+function iterateLine(rapLine) {
+    return rapLine.replace(/\s/g, '<break time="0.25s"/>');
 }
