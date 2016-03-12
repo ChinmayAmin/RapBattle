@@ -173,6 +173,8 @@ function onIntent(intentRequest, session, callback) {
     // dispatch custom intents to handlers here
     if ("RapLine" === intentName) {
         handleAnswerRequest(intent, session, callback);
+    } else if ("InspireEvent" === intentName) {
+        retrieveHaiku(callback);
     } else if ("AMAZON.StartOverIntent" === intentName) {
         getWelcomeResponse(callback);
     } else if ("AMAZON.RepeatIntent" === intentName) {
@@ -230,6 +232,10 @@ function getWelcomeResponse(callback) {
 
 function caluculateRapScore() {
 	return 10;
+}
+
+function retrieveHaiku(callback) {
+	console.log(callback);
 }
 
 function handleAnswerRequest(intent, session, callback) {
