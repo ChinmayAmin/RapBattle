@@ -218,10 +218,12 @@ var CARD_TITLE = "Reindeer Games"; // Be sure to change this for your skill.
 
 function getWelcomeResponse(callback) {
     var sessionAttributes = {},
-        speechOutput = 'Welcome to Rap Battle! I will give you a random topic, try to rap about it. Let us begin. ',
-        shouldEndSession = false,
         rapTopic = generateTopic(),
-        repromptText = "The topic is. " + rapTopic;
+        speechOutput = 'Welcome to Rap Battle! Your topic is ' + rapTopic + '.... Player one, get ready to give the first
+        five syllable line of a Haiku about ' + rapTopic + ', 
+        three <break time="1s"/> two <break time="1s"/> one <break time="1s"/>, you\'re on!',
+        shouldEndSession = false,
+        repromptText = "The topic is " + rapTopic;
 
     speechOutput += repromptText;
     sessionAttributes = {
@@ -259,16 +261,17 @@ function handleAnswerRequest(intent, session, callback) {
         callback(session.attributes,
             buildSpeechletResponse(CARD_TITLE, speechOutput, reprompt, false));
     } else {
-        var speechOutputAnalysis = "";
-        speechOutput += userGaveUp ? "Go home Son" : "";
+        var successResult = 'Very good. Here is your Haiku: <break time="1s"/>' + intent.slots.Answer.value;
+        var repromptText = "Rap topic is " + session.attributes.rapTopic;
+        speechOutput += userGaveUp ? "Go home Son" : successResult;
         score = caluculateRapScore();
 
-            sessionAttributes = {
-               "rapTopic": rapTopic,
-                "speechOutput": repromptText,
-                "repromptText": repromptText,
-                "score": 0
-            };
+        sessionAttributes = {
+           "rapTopic": session.attributes.rapTopic,
+            "speechOutput": repromptText,
+            "repromptText": repromptText,
+            "score": score
+        };
             callback(sessionAttributes,
                 buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, false));
     }
@@ -309,8 +312,9 @@ function handleFinishSessionRequest(intent, session, callback) {
 }
 
 function isValidRap(intent) {
-    console.log(intent.slots.Answer.value);
-    return true;
+    var answerSlotFilled = intent.slots && intent.slots.Answer && intent.slots.Answer.value;
+    //Check using NLP
+    return answerSlotFilled;
 }
 
 // ------- Helper functions to build responses -------
@@ -319,8 +323,8 @@ function isValidRap(intent) {
 function buildSpeechletResponse(title, output, repromptText, shouldEndSession) {
     return {
         outputSpeech: {
-            type: "PlainText",
-            text: output
+            type: "SSML",
+            ssml: '<speak>' + output + '</speak>'
         },
         card: {
             type: "Simple",
@@ -329,8 +333,8 @@ function buildSpeechletResponse(title, output, repromptText, shouldEndSession) {
         },
         reprompt: {
             outputSpeech: {
-                type: "PlainText",
-                text: repromptText
+                type: "SSML",
+                ssml: '<speak>' + repromptText + '</speak>'
             }
         },
         shouldEndSession: shouldEndSession
