@@ -1,10 +1,10 @@
 #!/bin/bash
 rm update.zip
-zip -r update.zip *
+zip -r update.zip *.js
 aws lambda update-function-code \
---function-name 'xxxxxxxxxxxx' \
+--function-name RapBattle \
 --zip-file fileb://./update.zip
 aws lambda update-function-configuration \
---function-name 'xxxxxxxxxxxx' \
+--function-name RapBattle \
 --description "$(date) -- $(whoami)"
 rm update.zip
