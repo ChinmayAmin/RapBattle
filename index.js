@@ -1,6 +1,8 @@
 'use strict';
 
 var request = require('request');
+var syllable = require('syllable'); //Syllable count Use case: syllable(phrase)
+var moby = require('moby'); //Thesaurus Use case: moby.search(word)
 
 var _topics = [
     "pleasure",
@@ -353,13 +355,12 @@ function buildResponse(sessionAttributes, speechletResponse) {
     };
 }
 
-function rhymeLookup(rhyme) {
+function rhymeLookup(rhyme, callback) {
   //This function takes in an word input and returns a JSON of words that rhyme with the input word
   //Params of JSON include word, number of variables, and how closely the word rhymes with input word
   request('https://api.datamuse.com/words?rel_rhy=' +rhyme, function (error, response, body) {
     if (!error && response.statusCode == 200) {
-          console.log(JSON.parse(body));
-          return JSON.parse(body);
+          callback(JSON.parse(body));
         }
     });
 }
