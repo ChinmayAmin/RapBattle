@@ -1,21 +1,6 @@
-/**
- Copyright 2014-2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the License. A copy of the License is located at
-
- http://aws.amazon.com/apache2.0/
-
- or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
- */
-
-/**
- * This sample shows how to create a simple Trivia skill with a multiple choice format. The skill
- * supports 1 player at a time, and does not support games across sessions.
- */
-
 'use strict';
-var request = require('request');
 
+var request = require('request');
 
 var _topics = [
     "pleasure",
@@ -71,13 +56,40 @@ var _topics = [
     "your crush",
     "book"
 ];
+
 /**
  * When editing your questions pay attention to your punctuation. Make sure you use question marks or periods.
  * Make sure the first answer is the correct one. Set at least 4 answers, any extras will be shuffled in.
+ *
+ * Use Case -- Two player Haiku Battle
+ *
+ * User:  Alexa, open rap battle
+ * Alexa: Welcome to Rap Battle! Your topic is SPRING.... Player one, get ready to give the first five syllable line of
+ *        a Haiku about SPRING, three... two... one, you're on!
+ * User:  Days melt fear away
+ * Alexa: Very good, Player two, Get ready to give the second seven syllable line, three... two... one... you're up!
+ * User:  Warm my insides and my mind
+ * Alexa: Very good, Player one, Get ready to rhyme with the third five syllable line, three... two.. one... you're
+ *        rhyming!
+ * User:  Calm water feels kind
+ * Alexa: Very good. Here is your Haiku: "Days melt fear away"... "Warm my insides and my mind"... "Calm water
+ *        feels kind".
+ *
+ *
+ * Use Case - Multi Users Haiku Battle
+ *
+ *
+ * User:  Alexa, open rap battle
+ * Alexa: Welcome to Rap Battle! How many players are there?
+ * User:  Two
+ * Alexa: Player 1, what is your name?
+ * User:  Josh
+ * Alexa: Welcome Josh, you have not played before. Player 2, what is your name?
+ * User:  Samuel
+ * Alexa: Welcome Samuel, you ranking is MASTER RAPPER. The top is SPRING... Josh, get ready to give your first..... etc.
+ *
+ * Scoring: 1 point for correct syllables, 2 points for correct syllables and rhyming.
  */
-
-// Route the incoming request based on type (LaunchRequest, IntentRequest,
-// etc.) The JSON body of the request is provided in the event parameter.
 exports.handler = function (event, context) {
     try {
         // console.log("event.session.application.applicationId=" + event.session.application.applicationId);
@@ -253,9 +265,9 @@ function handleAnswerRequest(intent, session, callback) {
 
             sessionAttributes = {
                "rapTopic": rapTopic,
-        		"speechOutput": repromptText,
-        		"repromptText": repromptText,
-        		"score": 0
+                "speechOutput": repromptText,
+                "repromptText": repromptText,
+                "score": 0
             };
             callback(sessionAttributes,
                 buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, false));
