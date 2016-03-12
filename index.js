@@ -392,11 +392,6 @@ function getWelcomeResponse(callback) {
         speechOutput = 'Welcome to Rap Battle! I will give you a random topic, try to rap about it. Let us begin. ',
         shouldEndSession = false,
         rapTopic = "Trump",
-        gameQuestions = populateGameQuestions(),
-        correctAnswerIndex = Math.floor(Math.random() * (ANSWER_COUNT)), // Generate a random index for the correct answer, from 0 to 3
-        roundAnswers = populateRoundAnswers(gameQuestions, 0, correctAnswerIndex),
-        currentQuestionIndex = 0,
-        spokenQuestion = Object.keys(questions[gameQuestions[currentQuestionIndex]])[0],
         repromptText = "The topic is. " + rapTopic;
 
     speechOutput += repromptText;
@@ -404,82 +399,20 @@ function getWelcomeResponse(callback) {
         "rapTopic": rapTopic,
         "speechOutput": repromptText,
         "repromptText": repromptText,
-        "currentQuestionIndex": currentQuestionIndex,
-        "correctAnswerIndex": correctAnswerIndex + 1,
-        "questions": gameQuestions,
-        "score": 0,
-        "correctAnswerText":
-            questions[gameQuestions[currentQuestionIndex]][Object.keys(questions[gameQuestions[currentQuestionIndex]])[0]][0]
+        "score": 0
     };
     callback(sessionAttributes,
         buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, shouldEndSession));
 }
 
-function populateGameQuestions() {
-    var gameQuestions = [];
-    var indexList = [];
-    var index = questions.length;
-
-    if (GAME_LENGTH > index){
-        throw "Invalid Game Length.";
-    }
-
-    for (var i = 0; i < questions.length; i++){
-        indexList.push(i);
-    }
-
-    // Pick GAME_LENGTH random questions from the list to ask the user, make sure there are no repeats.
-    for (var j = 0; j < GAME_LENGTH; j++){
-        var rand = Math.floor(Math.random() * index);
-        index -= 1;
-
-        var temp = indexList[index];
-        indexList[index] = indexList[rand];
-        indexList[rand] = temp;
-        gameQuestions.push(indexList[index]);
-    }
-
-    return gameQuestions;
-}
-
-function populateRoundAnswers(gameQuestionIndexes, correctAnswerIndex, correctAnswerTargetLocation) {
-    // Get the answers for a given question, and place the correct answer at the spot marked by the
-    // correctAnswerTargetLocation variable. Note that you can have as many answers as you want but
-    // only ANSWER_COUNT will be selected.
-    var answers = [],
-        answersCopy = questions[gameQuestionIndexes[correctAnswerIndex]][Object.keys(questions[gameQuestionIndexes[correctAnswerIndex]])[0]],
-        temp, i;
-
-    var index = answersCopy.length;
-
-    if (index < ANSWER_COUNT){
-        throw "Not enough answers for question.";
-    }
-
-    // Shuffle the answers, excluding the first element.
-    for (var j = 1; j < answersCopy.length; j++){
-        var rand = Math.floor(Math.random() * (index - 1)) + 1;
-        index -= 1;
-
-        var temp = answersCopy[index];
-        answersCopy[index] = answersCopy[rand];
-        answersCopy[rand] = temp;
-    }
-
-    // Swap the correct answer into the target location
-    for (i = 0; i < ANSWER_COUNT; i++) {
-        answers[i] = answersCopy[i];
-    }
-    temp = answers[0];
-    answers[0] = answers[correctAnswerTargetLocation];
-    answers[correctAnswerTargetLocation] = temp;
-    return answers;
+function caluculateRapScore() {
+	return 10;
 }
 
 function handleAnswerRequest(intent, session, callback) {
     var speechOutput = "";
     var sessionAttributes = {};
-    var gameInProgress = session.attributes && session.attributes.questions;
+    var gameInProgress = session.attributes && session.attributes.rapTopic;
     var answerSlotValid = isValidRap(intent);
     var userGaveUp = intent.name === "DontKnowIntent";
 
@@ -491,61 +424,21 @@ function handleAnswerRequest(intent, session, callback) {
         callback(sessionAttributes,
             buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, false));
     } else if (!answerSlotValid && !userGaveUp) {
-        // If the user provided answer isn't a number > 0 and < ANSWER_COUNT,
-        // return an error message to the user. Remember to guide the user into providing correct values.
+	//Award points based on what the user said here
         var reprompt = session.attributes.speechOutput;
-        var speechOutput = "Your answer must be a number between 1 and " + ANSWER_COUNT + ". " + reprompt;
+        var speechOutput = "You are a dumbass. This is not how you rap.";
         callback(session.attributes,
             buildSpeechletResponse(CARD_TITLE, speechOutput, reprompt, false));
     } else {
-        var gameQuestions = session.attributes.questions,
-            correctAnswerIndex = parseInt(session.attributes.correctAnswerIndex),
-            currentScore = parseInt(session.attributes.score),
-            currentQuestionIndex = parseInt(session.attributes.currentQuestionIndex),
-            correctAnswerText = session.attributes.correctAnswerText;
-
         var speechOutputAnalysis = "";
-
-        if (answerSlotValid && parseInt(intent.slots.Answer.value) == correctAnswerIndex) {
-            currentScore++;
-            speechOutputAnalysis = "correct. ";
-        } else {
-            if (!userGaveUp) {
-                speechOutputAnalysis = "wrong. "
-            }
-            speechOutputAnalysis += "The correct answer is " + correctAnswerIndex + ": " + correctAnswerText + ". ";
-        }
-        // if currentQuestionIndex is 4, we've reached 5 questions (zero-indexed) and can exit the game session
-        if (currentQuestionIndex == GAME_LENGTH - 1) {
-            speechOutput = userGaveUp ? "" : "That answer is ";
-            speechOutput += speechOutputAnalysis + "You got " + currentScore.toString() + " out of "
-                + GAME_LENGTH.toString() + " questions correct. Thank you for playing!";
-            callback(session.attributes,
-                buildSpeechletResponse(CARD_TITLE, speechOutput, "", true));
-        } else {
-            currentQuestionIndex += 1;
-            var spokenQuestion = Object.keys(questions[gameQuestions[currentQuestionIndex]])[0];
-            // Generate a random index for the correct answer, from 0 to 3
-            correctAnswerIndex = Math.floor(Math.random() * (ANSWER_COUNT));
-            var roundAnswers = populateRoundAnswers(gameQuestions, currentQuestionIndex, correctAnswerIndex),
-
-                questionIndexForSpeech = currentQuestionIndex + 1,
-                repromptText = "Question " + questionIndexForSpeech.toString() + ". " + spokenQuestion + " ";
-            for (var i = 0; i < ANSWER_COUNT; i++) {
-                repromptText += (i+1).toString() + ". " + roundAnswers[i] + ". "
-            }
-            speechOutput += userGaveUp ? "" : "That answer is ";
-            speechOutput += speechOutputAnalysis + "Your score is " + currentScore.toString() + ". " + repromptText;
-
+            speechOutput += userGaveUp ? "GO" : "GO",
+            score = caluculateRapScore();
+ 		
             sessionAttributes = {
-                "speechOutput": repromptText,
-                "repromptText": repromptText,
-                "currentQuestionIndex": currentQuestionIndex,
-                "correctAnswerIndex": correctAnswerIndex + 1,
-                "questions": gameQuestions,
-                "score": currentScore,
-                "correctAnswerText":
-                    questions[gameQuestions[currentQuestionIndex]][Object.keys(questions[gameQuestions[currentQuestionIndex]])[0]][0]
+               "rapTopic": rapTopic,
+		"speechOutput": repromptText,
+		"repromptText": repromptText,
+		"score": 0
             };
             callback(sessionAttributes,
                 buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, false));
