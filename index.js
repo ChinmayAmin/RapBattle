@@ -3,6 +3,8 @@
 var request = require('request');
 var syllable = require('syllable'); //Syllable count Use case: syllable(phrase)
 var moby = require('moby'); //Thesaurus Use case: moby.search(word)
+var ddb = require('dynamodb').ddb({ accessKeyId: 'AKIAJAAV4J67C33OOHFA', secretAccessKey: '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'});
+var async = require('async');
 
 var _topics = [
     "pleasure",
@@ -173,8 +175,8 @@ function onIntent(intentRequest, session, callback) {
     // dispatch custom intents to handlers here
     if ("RapLine" === intentName) {
         handleAnswerRequest(intent, session, callback);
-    } else if ("InspireEvent" === intentName) {
-        retrieveHaiku(callback);
+    } else if ("InspireIntent" === intentName) {
+        retrieveHaiku(session, callback);
     } else if ("AMAZON.StartOverIntent" === intentName) {
         getWelcomeResponse(callback);
     } else if ("AMAZON.RepeatIntent" === intentName) {
@@ -234,8 +236,27 @@ function caluculateRapScore() {
 	return 10;
 }
 
-function retrieveHaiku(callback) {
-	console.log(callback);
+function retrieveHaiku(session, callback) {
+    async.waterfall([
+        function(cb){
+            ddb.getItem('Haiku', 0, null, {}, function(err, res, cap) {
+                cb(err,res);
+            });
+        },
+        function(item, cb){
+            var rand_id = Math.floor(Math.random() * (item.lastID - 1)) + 1;
+            console.log(rand_id);
+            ddb.getItem('Haiku', rand_id, null, {}, function(err, res, cap) {
+                cb(err,res);
+            })
+        }
+    ],function(err, data){
+        if (err) {
+            callback(session, buildSpeechletResponse(CARD_TITLE, 'Something went wrong', '', true));
+        } else {
+            callback(session, buildSpeechletResponse(CARD_TITLE, data.haiku, 'Do you want to hear another one?', false));
+        }
+    });
 }
 
 function handleAnswerRequest(intent, session, callback) {
