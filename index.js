@@ -429,17 +429,12 @@ function handleAnswerRequest(intent, session, callback) {
     var userGaveUp = intent.name === "DontKnowIntent";
     var score;
     if (!gameInProgress) {
-        // If the user responded with an answer but there is no game in progress, ask the user
-        // if they want to start a new game. Set a flag to track that we've prompted the user.
-        sessionAttributes.userPromptedToContinue = true;
-        speechOutput = "There is no game in progress. Do you want to start a new game? ";
-        callback(sessionAttributes,
-            buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, false));
+        getWelcomeResponse(session, callback)
     } else if (!answerSlotValid && !userGaveUp) {
 	      //Award points based on what the user said here
-        speechOutput = 'That is not how a haiku works. Your line needs to have 5 syllables but it has ' + countSyllables(getRapLine(intent)) + ' syllables.';
+        speechOutput = 'That was whack. Your needed 5 beats but you said ' + countSyllables(getRapLine(intent)) + ' syllables.';
         if(session.attributes.currentLine == 1) {
-          speechOutput = 'That is not how a haiku works. Your line needs to have 7 syllables but it has ' + countSyllables(getRapLine(intent)) + ' syllables.';
+          speechOutput = 'That was whack. Your needed 5 beats but you said ' + countSyllables(getRapLine(intent)) + ' syllables.';
 
         }
         var reprompt = 'The topic is ' + session.attributes.rapTopic;
