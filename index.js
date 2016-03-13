@@ -288,17 +288,18 @@ function handlePlayerNameRequest(name, session, callback) {
     if (session.attributes.playerCount && session.attributes.players.length >= getPlayerCount(session)) {
         session.attributes.playerCount = session.attributes.players.length + 1;
     }
-    var user = getUserObject(session, name);
-    user.timesPlayed += 1;
-    session.attributes.players.push(user);
+    getUserObject(session, name, function(user) {
+        user.timesPlayed += 1;
+        session.attributes.players.push(user);
 
-    if(!session.attributes.playerCount) {
-        generatePlayerCountMessage(true, session, callback);
-    } else if (session.attributes.players.length < getPlayerCount(session)) {
-        generateNextPlayerMessage(true, session, callback);
-    } else {
-        generateTopicMessage(true, session, callback);
-    }
+        if(!session.attributes.playerCount) {
+            generatePlayerCountMessage(true, session, callback);
+        } else if (session.attributes.players.length < getPlayerCount(session)) {
+            generateNextPlayerMessage(true, session, callback);
+        } else {
+            generateTopicMessage(true, session, callback);
+        }
+    });
 }
 
 function generatePlayerCountMessage(greetPlayer, session, callback) {
@@ -413,6 +414,7 @@ function handleAnswerRequest(intent, session, callback) {
             var user = getPlayerWithLine(session, 2);
             successOutput = 'Right on! ' + user.name + ' get ready to give the next seven beat line, ' + '<break time="0.5s"/> Three <break time="0.5s"/> two <break time="0.5s"/> one, you\'re up!'
         } else if (session.attributes.currentLine == 2) {
+            console.log("7 line 1");
             targetBeats = 7;
             var user = getPlayerWithLine(session, 3);
             successOutput = 'Very good. '+user.name+ ' get ready to rhyme with the next five beat line, ' + '<break time="0.5s"/> Three <break time="0.5s"/> two <break time="0.5s"/> one, you\'re rhyming!'
@@ -434,6 +436,7 @@ function handleAnswerRequest(intent, session, callback) {
             _.each(session.attributes.userHaiku, function(result) {
                 successOutput += result + '<break time="0.25s"/>';
             });
+            console.log("7 line 3");
             checkRhyme(session.attributes.userHaiku[1], rapLine, function(success) {
                 var speechOutput;
                 if (success) {
@@ -444,8 +447,9 @@ function handleAnswerRequest(intent, session, callback) {
                 }
                 checkScore(session, function(err, score) {
                     if (score) {
-                        session.attributes.score = score;
-                        speechOutput += 'Your score is: ' + score + '!';
+                        var scoreValue = Math.floor(score*10);
+                        session.attributes.score = scoreValue;
+                        speechOutput += 'Your score is: ' + scoreValue + '!';
                     }
                     session.attributes.speechOutput = speechOutput;
                     session.attributes.repromptText = repromptText;
@@ -455,9 +459,11 @@ function handleAnswerRequest(intent, session, callback) {
             });
         }
         else {
+            console.log("7 line 4");
             session.attributes.speechOutput = successOutput;
             session.attributes.repromptText = repromptText;
             session.attributes.currentLine++;
+            console.log("7 line 5");
             callback(session.attributes, buildSpeechletResponse(CARD_TITLE, successOutput, repromptText, false));
         }
     }
@@ -489,10 +495,11 @@ function checkScore(session, scoreCallback) {
                     });
                 },
                 function(item, score){
+                    console.log(scoreValue);
                     var storeItem = {
                         id: item.lastID,
                         haiku: session.attributes.userHaiku.join(','),
-                        score: score || 0
+                        score: scoreValue|| 0
                     };
                     ddb.putItem('Haiku',storeItem, {}, function(err, res, cap) {
                         cb(err, score);
@@ -557,7 +564,7 @@ function countSyllables(line) {
   var wordList = line.split(' ');
   _.each(wordList, function(word){
     syllableCount += syllable(word);
-  })
+  });
   return syllableCount;
 }
 
@@ -662,29 +669,76 @@ function iterateLine(rapLine) {
  *         ]
  *         Uses database to get them.
  */
-function getKnownPlayers(session) {
-    return {};
+function getKnownPlayers(session, callback) {
+    ddb.getItem(session.user.userId, 0, null, {}, function(err, res, cap) {
+        console.log("1", res);
+        console.log("2", res? res:{});
+        var result = res? res:{};
+        callback(result);
+    });
 }
 
-function getUserObject(session, name) {
-    var players = getKnownPlayers(session);
-    var player = players[name];
-    if (player) {
-        return player;
-    }
-    if (session.attributes && session.attributes.players) {
-        for (var i = 0; i < session.attributes.players.length; i++) {
-            if (session.attributes.players[i].name == name) {
-                return session.attributes.players[i];
+function getUserObject(session, name, callback) {
+    var players;
+    async.series([
+        function(cb) {
+            players = getKnownPlayers(session, function(result) {
+                players = result;
+                cb();
+            });
+        },
+        function(cb) {
+            var player = players[name];
+            if (player) {
+                return callback(player);
             }
+            if (session.attributes && session.attributes.players) {
+                for (var i = 0; i < session.attributes.players.length; i++) {
+                    if (session.attributes.players[i].name == name) {
+                        return callback(session.attributes.players[i]);
+                    }
+                }
+            }
+            cb();
+        },
+        function(cb) {
+            var newUser =  {
+                name: name,
+                allTimeScore: 0,
+                timesPlayed: 0
+            };
+            players[name] = newUser;
+
+            ddb.putItem(session.user.userId, players, {}, function(err, res, cap) {
+                callback(newUser);
+            });
         }
-    }
-    return {
-        name: name,
-        allTimeScore: 0,
-        timesPlayed: 0
-    }
+    ]);
+
+    //var players = getKnownPlayers(session);
+    //var player = players[name];
+    //if (player) {
+    //    return player;
+    //}
+    //if (session.attributes && session.attributes.players) {
+    //    for (var i = 0; i < session.attributes.players.length; i++) {
+    //        if (session.attributes.players[i].name == name) {
+    //            return session.attributes.players[i];
+    //        }
+    //    }
+    //}
+    //var newUser =  {
+    //                    name: name,
+    //                    allTimeScore: 0,
+    //                    timesPlayed: 0
+    //                };
+    //players[name] = newUser;
+    //
+    //ddb.putItem(session.sessionId, players, {}, function(err, res, cap) {
+    //    return newUser;
+    //});
 }
+
 
 function getPlayerCount(session) {
     return parseInt(session.attributes.playerCount);
