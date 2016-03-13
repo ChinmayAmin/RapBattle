@@ -307,13 +307,6 @@ function generatePlayerCountMessage(greetPlayer, session, callback) {
     if (greetPlayer){
         var players = session.attributes.players;
         var previousPlayer = players[players.length - 1];
-        var welcomeMessage;
-        if (previousPlayer.timesPlayed > 1) {
-            welcomeMessage = "your ranking is " + getRankingDescription(previousPlayer);
-        } else {
-            welcomeMessage = "you have not played before";
-        }
-        speechOutput = "Welcome " + previousPlayer.name + ", " + welcomeMessage + ". ";
     }
     else {
         speechOutput = 'Welcome to Haiku Battle! ';
@@ -330,13 +323,7 @@ function generateTopicMessage(greetPlayer, session, callback) {
     if (greetPlayer) {
         var players = session.attributes.players;
         var previousPlayer = players[players.length - 1];
-        var welcomeMessage;
-        if (previousPlayer.timesPlayed > 1) {
-            welcomeMessage = "your ranking is " + getRankingDescription(previousPlayer);
-        } else {
-            welcomeMessage = "you have not played before";
-        }
-        speechOutput += "Welcome " + previousPlayer.name + ", " + welcomeMessage + ". ";
+        speechOutput += "Welcome " + previousPlayer.name + ". ";
     }
     session.attributes.rapTopic = generateTopic();
     console.log("RAP TOPIC is " + session.attributes.rapTopic);
@@ -357,15 +344,8 @@ function generateNextPlayerMessage(greetPlayer, session, callback) {
     var players = session.attributes.players;
     var speechOutput = "";
     if (greetPlayer) {
-        var welcomeMessage;
         var previousPlayer = players[players.length-1];
-        if (previousPlayer.timesPlayed > 1) {
-            welcomeMessage = "your ranking is " + getRankingDescription(previousPlayer);
-        }
-        else {
-            welcomeMessage = "you have not played before";
-        }
-        speechOutput += "Welcome " + previousPlayer.name + ", " +welcomeMessage + ". ";
+        speechOutput += "Welcome " + previousPlayer.name + ". ";
     }
     speechOutput += "Player " + (players.length + 1) + " , what is your name?";
     session.attributes.speechOutput = speechOutput;
@@ -433,6 +413,7 @@ function handleAnswerRequest(intent, session, callback) {
             return;
         }
         session.attributes.userHaiku.push(rapLine);
+        session.attributes.score += 1;
         var repromptText = "Rap topic is " + session.attributes.rapTopic;
 
         if (session.attributes.currentLine == 3) {
@@ -443,22 +424,17 @@ function handleAnswerRequest(intent, session, callback) {
             checkRhyme(session.attributes.userHaiku[1], rapLine, function(success) {
                 var speechOutput;
                 if (success) {
-                    speechOutput = 'Very good!' + successOutput;
+                    session.attributes.score += 1;
+                    speechOutput = 'Very good!' + successOutput + 'Your score is: ' + session.attributes.score + '!';
                 }
                 else {
-                    speechOutput = 'Missed the rhyme, try it next time! ' + successOutput;
+                    speechOutput = 'Missed the rhyme, try it next time! ' + successOutput + 'Your score is: ' + session.attributes.score + '!';
                 }
-                checkScore(session, function(err, score) {
-                    if (score) {
-                        session.attributes.score = score;
-                        speechOutput += 'Your score is: ' + score + '!';
-                    }
-                    session.attributes.speechOutput = speechOutput;
-                    session.attributes.repromptText = repromptText;
-                    session.attributes.currentLine++;
-                    session.attributes.retries = 0;
-                    callback(session.attributes, buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, true));
-                })
+                session.attributes.speechOutput = speechOutput;
+                session.attributes.repromptText = repromptText;
+                session.attributes.currentLine++;
+                session.attributes.retries = 0;
+                return callback(session.attributes, buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, true));
             });
         }
         else {
