@@ -3,6 +3,10 @@
 var request = require('request');
 var syllable = require('syllable'); //Syllable count Use case: syllable(phrase)
 var moby = require('moby'); //Thesaurus Use case: moby.search(word)
+var _ = require('lodash');
+var num2text = require('num2text');
+var ddb = require('dynamodb').ddb({ accessKeyId: 'AKIAJAAV4J67C33OOHFA', secretAccessKey: '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'});
+var async = require('async');
 
 var _topics = [
     "pleasure",
@@ -95,7 +99,6 @@ var _topics = [
 exports.handler = function (event, context) {
     try {
         // console.log("event.session.application.applicationId=" + event.session.application.applicationId);
-
         /**
          * Uncomment this if statement and populate with your skill's application ID to
          * prevent someone else from configuring a skill that sends requests to this function.
@@ -142,7 +145,10 @@ function onSessionStarted(sessionStartedRequest, session) {
     }
     session.attributes.playerCount = 0;
     session.attributes.players = [];
-    session.currentLine = 0;
+    session.attributes.currentLine = 0;
+    session.attributes.rapTopic = null;
+    session.attributes.score = 0;
+    session.attributes.userHaiku = [];
 }
 
 /**
@@ -184,6 +190,8 @@ function onIntent(intentRequest, session, callback) {
         handlePlayerNameRequest(intent, session, callback);
     } else if("PlayerNumberIntent" === intentName) {
         handlePlayerCountRequest(intent, session, callback);
+    } else if ("InspireIntent" === intentName) {
+        retrieveHaiku(session, callback);
     } else if ("AMAZON.StartOverIntent" === intentName) {
         getWelcomeResponse(session, callback);
     } else if ("AMAZON.RepeatIntent" === intentName) {
@@ -225,8 +233,42 @@ function getWelcomeResponse(session, callback) {
     generatePlayerCountMessage(false, session, callback);
 }
 
-function caluculateRapScore() {
-	return 10;
+function calculateRapScore(haiku, cb) {
+    request.post({
+        url: 'http://ec2-52-91-212-182.compute-1.amazonaws.com:80',
+        json: {
+            line: haiku
+        }
+    }, function(err, res, body) {
+        if (err) {
+            cb(null,0);
+        } else {
+            var score  =  _.sum(_.flatten(_.flatten(body.data))) / body.data.length / body.data.length;
+            cb(null, score);
+        }
+    });
+}
+
+function retrieveHaiku(session, callback) {
+    async.waterfall([
+        function(cb){
+            ddb.getItem('Haiku', 0, null, {}, function(err, res, cap) {
+                cb(err,res);
+            });
+        },
+        function(item, cb){
+            var rand_id = Math.floor(Math.random() * (item.lastID - 1)) + 1;
+            ddb.getItem('Haiku', rand_id, null, {}, function(err, res, cap) {
+                cb(err,res);
+            })
+        }
+    ],function(err, data){
+        if (err) {
+            callback(session, buildSpeechletResponse(CARD_TITLE, 'Something went wrong', '', true));
+        } else {
+            callback(session, buildSpeechletResponse(CARD_TITLE, data.haiku, 'Do you want to hear another one?', false));
+        }
+    });
 }
 
 function handlePlayerCountRequest(intent, session, callback) {
@@ -383,7 +425,7 @@ function handleAnswerRequest(intent, session, callback) {
     var speechOutput = "";
     var sessionAttributes = {};
     var gameInProgress = session.attributes && session.attributes.rapTopic;
-    var answerSlotValid = isValidRap(intent);
+    var answerSlotValid = isValidRap(session, intent);
     var userGaveUp = intent.name === "DontKnowIntent";
     var score;
     if (!gameInProgress) {
@@ -395,25 +437,84 @@ function handleAnswerRequest(intent, session, callback) {
             buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, false));
     } else if (!answerSlotValid && !userGaveUp) {
 	      //Award points based on what the user said here
-        speechOutput = 'That is not how a haiku works. Your line needs to have 5 syllables but it has ' + syllable(getRapLine(intent)) + ' syllables.';
+        speechOutput = 'That is not how a haiku works. Your line needs to have 5 syllables but it has ' + countSyllables(getRapLine(intent)) + ' syllables.';
+        if(session.attributes.currentLine == 1) {
+          speechOutput = 'That is not how a haiku works. Your line needs to have 7 syllables but it has ' + countSyllables(getRapLine(intent)) + ' syllables.';
+
+        }
         var reprompt = 'The topic is ' + session.attributes.rapTopic;
         callback(session.attributes,
             buildSpeechletResponse(CARD_TITLE, speechOutput, reprompt, false));
     } else {
-        var successResult = 'Very good. Here is your Haiku: <break time="1s"/>' + iterateLine(getRapLine(intent));
+        // They have given us a rap line, and we need to know what line we are on.
+        var rapLine = getRapLine(intent),
+            successResult = '',
+            endSession = false;
+        session.attributes.userHaiku.push(rapLine);
+        session.attributes.currentLine++;
+        successResult = getTextForNextLine(session.attributes);
+        //'Very good. Here is your Haiku: <break time="0.5s"/>' + iterateLine(getRapLine(intent));
         var repromptText = "Rap topic is " + session.attributes.rapTopic;
         speechOutput += userGaveUp ? "Go home Son" : successResult;
-        score = caluculateRapScore();
+
+        if(session.attributes.currentLine >= 3) {
+            speechOutput += 'Very good. Here is your haiku, ';
+            _.each(session.attributes.userHaiku, function(result) {
+                speechOutput += result + '<break time="0.25s"/>';
+            });
+            endSession = true;
+        }
 
         sessionAttributes = {
-           "rapTopic": session.attributes.rapTopic,
-            "speechOutput": repromptText,
+            "rapTopic": session.attributes.rapTopic,
+            "speechOutput": speechOutput,
             "repromptText": repromptText,
-            "score": score
+            "currentLine": session.attributes.currentLine,
+            "userHaiku": session.attributes.userHaiku
         };
-            callback(sessionAttributes,
-                buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, true));
+
+        if (endSession) {
+            async.waterfall([
+                function(cb){
+                    calculateRapScore(session.attributes.userHaiku,cb),
+                    function(score, cb) {
+                        ddb.getItem('Haiku', 0, null, {}, function(err, res, cap) {
+                            cb(err,res,score);
+                        });
+                    },
+                    function(item, score){
+                        var storeItem = {
+                            id: item.lastID,
+                            haiku: session.attributes.userHaiku.join(','),
+                            score: score || 0
+                        };
+                        ddb.putItem('Haiku',storeItem, {}, function(err, res, cap) {
+                            cb(err, score);
+                        });
+                    };
+                }
+            ], function(err, score){
+                if (score) {
+                    sessionAttributes.score = score;
+                    speechOutput += 'Your score is: ' + score + '!';
+                }
+                callback(sessionAttributes, buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, endSession));
+            });
+        } else {
+            callback(sessionAttributes, buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, endSession));
+        }
     }
+}
+
+function getTextForNextLine(sessionAttributes) {
+    var result = '';
+    if(sessionAttributes.currentLine == 1) {
+        result = 'Very good. Get ready to give the seven syllable line, ' + '<break time="0.5s"/> Three <break time="0.5s"/> two <break time="0.5s"/> one, you\'re on!'
+    } else if(sessionAttributes.currentLine == 2) {
+        result = 'Very good. Get ready to give the second five syllable line, ' + '<break time="0.5s"/> Three <break time="0.5s"/> two <break time="0.5s"/> one, you\'re on!'
+    }
+
+    return result;
 }
 
 function handleRepeatRequest(intent, session, callback) {
@@ -450,8 +551,21 @@ function handleFinishSessionRequest(intent, session, callback) {
         buildSpeechletResponseWithoutCard("Good bye!", "", true));
 }
 
-function isValidRap(intent) {
-    return (syllable(getRapLine(intent)) === 5 || syllable(getRapLine(intent)) === 7);
+function isValidRap(session, intent) {
+    if(session.attributes.currentLine === 1) {
+      return (countSyllables(getRapLine(intent)) === 7);
+    } else {
+      return (countSyllables(getRapLine(intent)) === 5);
+    }
+}
+
+function countSyllables(line) {
+  var syllableCount = 0;
+  var wordList = line.split(' ');
+  _.each(wordList, function(word){
+    syllableCount += syllable(word);
+  })
+  return syllableCount;
 }
 
 function isValidName(intent) {
@@ -530,12 +644,22 @@ function getRapLine(intent) {
     }
     var rapLine = "";
     if(intent.slots.FiveSyllableLine && intent.slots.FiveSyllableLine.value) {
-       rapLine =  intent.slots.FiveSyllableLine.value;
+        rapLine =  intent.slots.FiveSyllableLine.value;
     } else if(intent.slots.SevenSyllableLine && intent.slots.SevenSyllableLine.value) {
         rapLine = intent.slots.SevenSyllableLine.value;
     }
 
-    return rapLine;
+    var wordList = rapLine.split(' ');
+    var literalWord = '';
+    _.each(wordList, function(word){
+      if(parseInt(word)){
+        literalWord += num2text.translate(parseInt(word)) + ' ';
+      } else {
+        literalWord += word + ' ';
+      }
+    })
+
+    return literalWord;
 }
 
 function iterateLine(rapLine) {
