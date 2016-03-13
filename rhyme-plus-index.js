@@ -1,4 +1,4 @@
-re('fs');
+var require('fs');
 var Lazy = require('lazy');
 var Hash = require('hashish');
 
