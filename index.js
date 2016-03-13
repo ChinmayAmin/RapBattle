@@ -99,7 +99,6 @@ var _topics = [
 exports.handler = function (event, context) {
     try {
         // console.log("event.session.application.applicationId=" + event.session.application.applicationId);
-        console.log(event);
         /**
          * Uncomment this if statement and populate with your skill's application ID to
          * prevent someone else from configuring a skill that sends requests to this function.
@@ -126,7 +125,6 @@ exports.handler = function (event, context) {
                     context.succeed(buildResponse(sessionAttributes, speechletResponse));
                 });
         } else if (event.request.type === "SessionEndedRequest") {
-            console.log('endingggg');
             onSessionEnded(event.request, event.session);
             context.succeed();
         }
@@ -250,7 +248,6 @@ function retrieveHaiku(session, callback) {
         },
         function(item, cb){
             var rand_id = Math.floor(Math.random() * (item.lastID - 1)) + 1;
-            console.log(rand_id);
             ddb.getItem('Haiku', rand_id, null, {}, function(err, res, cap) {
                 cb(err,res);
             })
@@ -268,7 +265,7 @@ function handleAnswerRequest(intent, session, callback) {
     var speechOutput = "";
     var sessionAttributes = {};
     var gameInProgress = session.attributes && session.attributes.rapTopic;
-    var answerSlotValid = isValidRap(intent);
+    var answerSlotValid = isValidRap(session, intent);
     var userGaveUp = intent.name === "DontKnowIntent";
     var score;
     if (!gameInProgress) {
@@ -280,7 +277,11 @@ function handleAnswerRequest(intent, session, callback) {
             buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, false));
     } else if (!answerSlotValid && !userGaveUp) {
 	      //Award points based on what the user said here
-        speechOutput = 'That is not how a haiku works. Your line needs to have 5 syllables but it has ' + syllable(getRapLine(intent)) + ' syllables.';
+        speechOutput = 'That is not how a haiku works. Your line needs to have 5 syllables but it has ' + countSyllables(getRapLine(intent)) + ' syllables.';
+        if(session.attributes.currentLine == 1) {
+          speechOutput = 'That is not how a haiku works. Your line needs to have 7 syllables but it has ' + countSyllables(getRapLine(intent)) + ' syllables.';
+
+        }
         var reprompt = 'The topic is ' + session.attributes.rapTopic;
         callback(session.attributes,
             buildSpeechletResponse(CARD_TITLE, speechOutput, reprompt, false));
@@ -297,9 +298,7 @@ function handleAnswerRequest(intent, session, callback) {
         speechOutput += userGaveUp ? "Go home Son" : successResult;
         score = caluculateRapScore();
 
-        console.log(session.attributes.currentLine);
         if(session.attributes.currentLine >= 3) {
-            console.log('>>>>>>>>HERREEEE');
             speechOutput += 'Very good. Here is your haiku, ';
             _.each(session.attributes.userHaiku, function(result) {
                 speechOutput += result + '<break time="0.25s"/>';
@@ -366,8 +365,21 @@ function handleFinishSessionRequest(intent, session, callback) {
         buildSpeechletResponseWithoutCard("Good bye!", "", true));
 }
 
-function isValidRap(intent) {
-    return (syllable(getRapLine(intent)) === 5 || syllable(getRapLine(intent)) === 7);
+function isValidRap(session, intent) {
+    if(session.attributes.currentLine === 1) {
+      return (countSyllables(getRapLine(intent)) === 7);
+    } else {
+      return (countSyllables(getRapLine(intent)) === 5);
+    }
+}
+
+function countSyllables(line) {
+  var syllableCount = 0;
+  var wordList = line.split(' ');
+  _.each(wordList, function(word){
+    syllableCount += syllable(word);
+  })
+  return syllableCount;
 }
 
 // ------- Helper functions to build responses -------
