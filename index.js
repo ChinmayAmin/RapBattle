@@ -212,7 +212,7 @@ function generateTopic() {
     return _topics[randomIndex];
 }
 
-var CARD_TITLE = "Rap Battle"; // Be sure to change this for your skill.
+var CARD_TITLE = "Haiku Battle"; // Be sure to change this for your skill.
 
 function getWelcomeResponse(session, callback) {
     initSession(session);
@@ -315,7 +315,7 @@ function generatePlayerCountMessage(greetPlayer, session, callback) {
         speechOutput = "Welcome " + previousPlayer.name + ", " + welcomeMessage + ". ";
     }
     else {
-        speechOutput = 'Welcome to Rap Battle! ';
+        speechOutput = 'Welcome to Haiku Battle! ';
     }
     speechOutput += "How many players are there?";
     session.attributes.speechOutput = speechOutput;
