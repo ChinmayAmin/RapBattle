@@ -156,7 +156,7 @@ function initSession(session) {
 function onLaunch(launchRequest, session, callback) {
     console.log("onLaunch requestId=" + launchRequest.requestId
         + ", sessionId=" + session.sessionId);
-
+    initSession(session);
     getWelcomeResponse(session, callback);
 }
 
@@ -169,12 +169,13 @@ function onIntent(intentRequest, session, callback) {
     var intent = intentRequest.intent,
         intentName = intentRequest.intent.name;
 
-    console.log("onIntent "+intentName+", requestId=" + intentRequest.requestId
+    console.log("onIntent "+intentName+", rapLine "+getRapLine(intent)+" requestId=" + intentRequest.requestId
         + ", sessionId=" + session.sessionId);
 
     // dispatch custom intents to handlers here
     if (isStartOverIntent(intent)) {
         console.log("StartOverIntent");
+        initSession(session);
         getWelcomeResponse(session, callback);
     }
     else if (isInspireMeIntent(session, intent)) {
@@ -216,8 +217,16 @@ function generateTopic() {
 var CARD_TITLE = "Haiku Battle"; // Be sure to change this for your skill.
 
 function getWelcomeResponse(session, callback) {
-    initSession(session);
-    generatePlayerCountMessage(false, session, callback);
+    if (!parseInt(session.attributes.playerCount)) {
+        generatePlayerCountMessage(false, session, callback);
+    }
+    else if (parseInt(session.attributes.playerCount) > 0
+        && session.attributes.players.length < parseInt(session.attributes.playerCount)) {
+        generateNextPlayerMessage(false, session, callback)
+    }
+    else {
+        generateTopicMessage(false, session, callback)
+    }
 }
 
 function calculateRapScore(haiku, cb) {
@@ -306,10 +315,17 @@ function generatePlayerCountMessage(greetPlayer, session, callback) {
     var speechOutput;
     if (greetPlayer){
         var players = session.attributes.players;
-        var previousPlayer = players[players.length - 1];
+        if (players.length) {
+            var previousPlayer = players[players.length - 1];
+            speechOutput = "Welcome " + previousPlayer.name + ". ";
+        }
     }
     else {
         speechOutput = 'Welcome to Haiku Battle! ';
+    }
+    if (session.attributes.players.length) {
+        var plural = session.attributes.players.length ? 'player' : 'players';
+        speechOutput += '<break time="1s">' + session.attributes.players.length + ' '+plural+'  gave their name so far.<break time="1s">';
     }
     speechOutput += "How many players are there?";
     session.attributes.speechOutput = speechOutput;
@@ -329,8 +345,8 @@ function generateTopicMessage(greetPlayer, session, callback) {
     console.log("RAP TOPIC is " + session.attributes.rapTopic);
     session.attributes.currentLine = 1;
     var user = getPlayerWithLine(session, 1);
-    speechOutput += 'Your topic is ' + session.attributes.rapTopic + '. '+user.name+ ' get ready to give the ' +
-            'first five beat line of a Haiku about ' + session.attributes.rapTopic
+    speechOutput += 'Your topic is <break time=".5s"/>' + session.attributes.rapTopic + '. '+user.name+ ' get ready to give the ' +
+            'first five beat line of a Haiku about <break time=".25s"/>' + session.attributes.rapTopic
             + '. Three <break time=".5s"/> two <break time=".5s"/> one, you\'re on!';
     var repromptText = "The topic is " + session.attributes.rapTopic;
 
@@ -407,7 +423,7 @@ function handleAnswerRequest(intent, session, callback) {
                 tryAgainWrongBeats(targetBeats, countSyllables(rapLine), session, callback);
             }
             else {
-                var speechOutput = "You used "+countSyllables(rapLine)+" beats. You need more practice.";
+                var speechOutput = "You used <break time='0.5s'/>"+countSyllables(rapLine)+"<break time='0.5s'/> beats. <break time='1s'/> You need more practice.";
                 callback(session.attributes, buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, true));
             }
             return;
@@ -417,18 +433,18 @@ function handleAnswerRequest(intent, session, callback) {
         var repromptText = "Rap topic is " + session.attributes.rapTopic;
 
         if (session.attributes.currentLine == 3) {
-            successOutput = 'Here is your haiku, ';
+            successOutput = 'Here is your haiku. <break time="1s"/>';
             _.each(session.attributes.userHaiku, function(result) {
-                successOutput += result + '<break time="0.35s"/>';
+                successOutput += iterateLine(result) + '<break time="1s"/>';
             });
             checkRhyme(session.attributes.userHaiku[1], rapLine, function(success) {
                 var speechOutput;
                 if (success) {
                     session.attributes.score += 1;
-                    speechOutput = 'Very good!' + successOutput + 'Your score is: ' + session.attributes.score + '!';
+                    speechOutput = 'Very good!' + successOutput + '. Your combined score is: ' + session.attributes.score + '!';
                 }
                 else {
-                    speechOutput = 'Missed the rhyme, try it next time! ' + successOutput + 'Your score is: ' + session.attributes.score + '!';
+                    speechOutput = 'Missed the rhyme, try it next time! ' + successOutput + '. Your combined score is: ' + session.attributes.score + '!';
                 }
                 session.attributes.speechOutput = speechOutput;
                 session.attributes.repromptText = repromptText;
@@ -644,7 +660,7 @@ function getTextInput(intent) {
 }
 
 function iterateLine(rapLine) {
-    return rapLine.replace(/\s/g, '<break time="0.25s"/>');
+    return rapLine.replace(/\s/g, '<break time="0.35s"/>');
 }
 
 /**
