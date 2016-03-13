@@ -217,11 +217,11 @@ function generateTopic() {
     return _topics[randomIndex];
 }
 
-var ANSWER_COUNT = 4;
-var GAME_LENGTH = 5;
 var CARD_TITLE = "Rap Battle"; // Be sure to change this for your skill.
 
 function getWelcomeResponse(session, callback) {
+    // Clear players.
+    session.attributes.players = [];
     generatePlayerCountMessage(false, session, callback);
 }
 
