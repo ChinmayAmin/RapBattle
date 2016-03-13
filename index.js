@@ -184,7 +184,7 @@ function onIntent(intentRequest, session, callback) {
     }
 
     // dispatch custom intents to handlers here
-    if ("RapLine" === intentName) {
+    if ("rapme" === intentName) {
         handleAnswerRequest(intent, session, callback);
     } else if ("PlayerNameIntent" === intentName) {
         handlePlayerNameRequest(intent, session, callback);
