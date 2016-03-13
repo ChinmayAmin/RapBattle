@@ -326,7 +326,7 @@ function generateTopic() {
     return _topics[randomIndex];
 }
 
-var CARD_TITLE = "Rap Battle"; // Be sure to change this for your skill.
+var CARD_TITLE = "Rap King"; // Be sure to change this for your skill.
 
 function getWelcomeResponse(session, callback) {
     initSession(session);
@@ -429,7 +429,7 @@ function generatePlayerCountMessage(greetPlayer, session, callback) {
         speechOutput = "Welcome " + previousPlayer.name + ", " + welcomeMessage + ". ";
     }
     else {
-        speechOutput = 'Welcome to Rap Battle! ';
+        speechOutput = 'Welcome to Rap King! ';
     }
     speechOutput += "How many players are there?";
     session.attributes.speechOutput = speechOutput;
@@ -832,7 +832,7 @@ function getPlayerNameIntent(session, intent) {
         text = text.substr(0, text.length - "is my name".length);
     }
     var words = text.split(' ');
-    if (words.length > 0 && words[0].length > 0) {
+    if (words.length > 0 && words[0].length   ) {
         return text;
     }
     return null;
@@ -841,7 +841,7 @@ function getPlayerNameIntent(session, intent) {
 function handleOpponentTurn(intent, session, callback) {
   if(session.attributes.rapBattleCount === 3) {
     callback(session.attributes,
-        buildSpeechletResponse(CARD_TITLE, 'You beat me son. I have failed you, snoopDog.','', true));
+        buildSpeechletResponse(CARD_TITLE, 'You have defeated me. Way to go!','', true));
     return;
   }
 
@@ -891,12 +891,13 @@ function generateAlexaRhyme(session, callback) {
       } else {
         speechOutput = 'So you think you have got what it takes to beat the champ? Follow my rhyme if you want to survive. <break time="0.5s"/>' + randomLine1 + '<break time="0.5s"/>' + randomLine2 + '<break time="0.5s"/>You\'re up next ';
       }
+      console.log('Here');
       session.attributes.lastWord = wordArray[1];
 
       callback(session.attributes,
           buildSpeechletResponse(CARD_TITLE, speechOutput,repromptText, false));
     } else {
-      var speechOutput = 'You beat me son. I have failed you, ' + '<break time="0.5s"/> snoopDog.';
+      var speechOutput = 'You beat the rap king. You have won.';
       callback(session.attributes,
           buildSpeechletResponse(CARD_TITLE, speechOutput,'', true));
     }

@@ -1,4 +1,4 @@
-var require('fs');
+var fs = require('fs');
 var Lazy = require('lazy');
 var Hash = require('hashish');
 
@@ -145,4 +145,3 @@ function active (ws) {
     );
     return ws.slice(i).join(' ');
 }
-
