@@ -235,8 +235,20 @@ function getWelcomeResponse(callback) {
         buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, shouldEndSession));
 }
 
-function caluculateRapScore() {
-	return 10;
+function calculateRapScore(haiku, cb) {
+    request.post({
+        url: 'http://ec2-52-91-212-182.compute-1.amazonaws.com:80',
+        json: {
+            line: haiku
+        }
+    }, function(err, res, body) {
+        if (err) {
+            cb(null,0);
+        } else {
+            var score  =  _.sum(_.flatten(_.flatten(body.data))) / body.data.length / body.data.length;
+            cb(null, score);
+        }
+    });
 }
 
 function retrieveHaiku(session, callback) {
@@ -296,7 +308,6 @@ function handleAnswerRequest(intent, session, callback) {
         //'Very good. Here is your Haiku: <break time="0.5s"/>' + iterateLine(getRapLine(intent));
         var repromptText = "Rap topic is " + session.attributes.rapTopic;
         speechOutput += userGaveUp ? "Go home Son" : successResult;
-        score = caluculateRapScore();
 
         if(session.attributes.currentLine >= 3) {
             speechOutput += 'Very good. Here is your haiku, ';
@@ -310,13 +321,40 @@ function handleAnswerRequest(intent, session, callback) {
             "rapTopic": session.attributes.rapTopic,
             "speechOutput": speechOutput,
             "repromptText": repromptText,
-            "score": score,
             "currentLine": session.attributes.currentLine,
             "userHaiku": session.attributes.userHaiku
         };
 
-            callback(sessionAttributes,
-                buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, endSession));
+        if (endSession) {
+            async.waterfall([
+                function(cb){
+                    calculateRapScore(session.attributes.userHaiku,cb),
+                    function(score, cb) {
+                        ddb.getItem('Haiku', 0, null, {}, function(err, res, cap) {
+                            cb(err,res,score);
+                        });
+                    },
+                    function(item, score){
+                        var storeItem = {
+                            id: item.lastID,
+                            haiku: session.attributes.userHaiku.join(','),
+                            score: score || 0
+                        };
+                        ddb.putItem('Haiku',storeItem, {}, function(err, res, cap) {
+                            cb(err, score);
+                        });
+                    };
+                }
+            ], function(err, score){
+                if (score) {
+                    sessionAttributes.score = score;
+                    speechOutput += 'Your score is: ' + score + '!';
+                }
+                callback(sessionAttributes, buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, endSession));
+            });
+        } else {
+            callback(sessionAttributes, buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, endSession));
+        }
     }
 }
 
