@@ -126,7 +126,7 @@ exports.handler = function (event, context) {
             context.succeed();
         }
     } catch (e) {
-        context.fail("Exception: " + e);
+        context.fail("Exception: " + e + ", Stack " + e.stack);
     }
 };
 
@@ -159,11 +159,13 @@ function onLaunch(launchRequest, session, callback) {
  * Called when the user specifies an intent for this skill.
  */
 function onIntent(intentRequest, session, callback) {
-    console.log("onIntent requestId=" + intentRequest.requestId
-        + ", sessionId=" + session.sessionId);
+
 
     var intent = intentRequest.intent,
         intentName = intentRequest.intent.name;
+
+    console.log("onIntent "+intentName+", requestId=" + intentRequest.requestId
+        + ", sessionId=" + session.sessionId);
 
     // handle yes/no intent after the user has been prompted
     if (session.attributes && session.attributes.userPromptedToContinue) {
@@ -275,7 +277,7 @@ function handlePlayerNameRequest(intent, session, callback) {
 
         if(!session.attributes.playerCount) {
             generatePlayerCountMessage(true, session, callback);
-        } else if (attributes.players.length < getPlayerCount(session)) {
+        } else if (session.attributes.players.length < getPlayerCount(session)) {
             generateNextPlayerMessage(true, session, callback);
         } else {
             generateTopicMessage(true, session, callback);
@@ -338,15 +340,18 @@ function generateTopicMessage(greetPlayer, session, callback) {
 
 function generateNextPlayerMessage(greetPlayer, session, callback) {
     var players = session.attributes.players;
-    var previousPlayer = players[players.length-1];
-    var welcomeMessage;
-    if (previousPlayer.timesPlayed > 1) {
-        welcomeMessage = "your ranking is "+getRankingDescription(previousPlayer);
+    var speechOutput = "";
+    if (greetPlayer) {
+        var welcomeMessage;
+        var previousPlayer = players[players.length-1];
+        if (previousPlayer.timesPlayed > 1) {
+            welcomeMessage = "your ranking is " + getRankingDescription(previousPlayer);
+        }
+        else {
+            welcomeMessage = "you have not played before";
+        }
+        speechOutput += "Welcome " + previousPlayer.name + ", " +welcomeMessage + ". ";
     }
-    else {
-        welcomeMessage = "you have not played before";
-    }
-    var speechOutput = "Welcome " + previousPlayer.name + ", " +welcomeMessage + ".";
     speechOutput += "Player " + (players.length + 1) + " , what is your name?";
     session.attributes.speechOutput = speechOutput;
     session.attributes.repromptText = speechOutput;
