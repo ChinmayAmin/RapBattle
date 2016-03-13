@@ -325,10 +325,9 @@ function generateTopicMessage(greetPlayer, session, callback) {
 
     session.attributes.currentLine = 1;
     var user = getPlayerWithTurn(session);
-
     speechOutput += 'Your topic is ' + rapTopic + '. '+user.name+ ' get ready to give the ' +
             'first five syllable line of a Haiku about ' + rapTopic
-            + '. Three <break time="1s"/> two <break time="1s"/> one, you\'re on!';
+            + '. Three <break time=".5s"/> two <break time=".5s"/> one, you\'re on!';
     var repromptText = "The topic is " + rapTopic;
 
     speechOutput += "The topic is " + rapTopic + ". " + session.attributes.players[0] + ", get ready to give your first";
@@ -582,6 +581,9 @@ function getPlayerCount(session) {
     return parseInt(session.attributes.playerCount);
 }
 
+/**
+ * @returns User who's turn it is.
+ */
 function getPlayerWithTurn(session) {
-    session.attributes.players[(session.attributes.currentLine - 1) % session.attributes.players.length];
+    return session.attributes.players[(session.attributes.currentLine - 1) % session.attributes.players.length];
 }
