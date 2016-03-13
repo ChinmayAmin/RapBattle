@@ -23,6 +23,7 @@
     "moby": "^1.1.1",
     "num2text": "^1.0.2",
     "request": "^2.69.0",
+    "rhyme-plus": "0.0.7",
     "syllable": "^0.1.4"
   }
 }
