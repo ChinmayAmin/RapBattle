@@ -395,7 +395,6 @@ function getRankingDescription(player) {
 }
 
 function handleAnswerRequest(intent, session, callback) {
-
     if (!session.attributes || !session.attributes.currentLine) {
         console.log("Game not in progress");
         getWelcomeResponse(session, callback)
@@ -419,7 +418,6 @@ function handleAnswerRequest(intent, session, callback) {
         }
         else if (session.attributes.currentLine == 3) {
             targetBeats = 5;
-
         }
         var rapLine = getRapLine(intent);
         if (countSyllables(rapLine) != targetBeats) {
