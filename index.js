@@ -7,6 +7,80 @@ var _ = require('lodash');
 var num2text = require('num2text');
 var ddb = require('dynamodb').ddb({ accessKeyId: 'AKIAJAAV4J67C33OOHFA', secretAccessKey: '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'});
 var async = require('async');
+var line-templates = require('./line-templates');
+
+var _adjective =[
+  "You can try and battle me, but you're too",
+  "I make the MCs in the place wish that they were",
+  "My rhymes blow your mind and you think it's",
+  "My sweet-ass rhymes make your <%= womanMan() %> feel",
+  "Now I'm gonna tell you why you ain't",
+  "You'll never beat me 'cause I'm so",
+  "If you're gonna battle me, then you gotta be",
+  "When I rock a mic you know I rock it real",
+  "If a rapper tries to step I'm gonna get",
+  "When I'm on the stage the <%= ladiesFellas() %> get",
+  "I'm smooth, you'll never catch me acting",
+  "Try and step to me I have to laugh, it's so",
+  "My style tried and tested, guaranteed most",
+  "Way I rock the mic you know I'm born",
+  "See you try to rhyme, it come out just so",
+  "I'm the greatest MC, internationally"
+];
+
+var _adverb = [
+  "You know I rock the mic so",
+  "Everybody knows I treat all the <%= ladiesFellas() %>",
+  "Everybody in the club looks at me so",
+  "You're just jealous 'cause I rap",
+  "Catch <%= youMe() %> on the streets, walking by so",
+  "My DJ drop the beat I pick it up most"
+];
+
+var _noun = [
+  "I'm the illest MC to ever rock the",
+  "When I'm on the mic you realize you're <%= a() %>",
+  "My rhymes bring the power like a raging",
+  "If you can't handle this then you're nothing but <%= a() %>",
+  "When I come to a battle I'm strapped with <%= a() %>",
+  "When you battle me it's like you battle <%= a() %>",
+  "Every other MC is a sucker",
+  "There's nobody like me 'cause I'm the greatest",
+  "You hear my freestyle and you drop your",
+  "My flow and my style both blow away the",
+  "My posse's got my back and my <%= sistasHomies() %> got my",
+  "Sweeter than molasses, and stronger than <%= a() %>",
+  "Try to step to me and I'mma wreck your",
+  "Wherever I go, people give me some",
+  "You're nothin' but a scrub, word to your",
+  "I'm a lyricist, I'm a microphone",
+  "I write my rhymes while I chill in my",
+  "They called me a new jack, but I'm a new",
+  "Master of the game, I'm the rap",
+  "I know what you want, what you want's <%= a() %>",
+  "My DJ is the backup and I'm the",
+  "When I'm on the mic I'm guaranteed to bring the"
+]
+
+var _properNoun = [
+  "I'm playing you and your best friend",
+  "I know how to charm a <%= womanMan() %>, just ask your friend",
+  "I've battled every MC, every Tom, Dick, and",
+  "You wish you had a DJ like DJ",
+  "Claim you're MC so-and-so but I just call you",
+  "Knew a cat like you, by the name of",
+  "I got real freaky with a <%= womanMan() %> named"
+];
+
+var _verbTransistive = [
+  "My rhyme profile makes the <%= ladiesFellas() %>",
+  "My DJ is the greatest, <%= sheHe() %> makes the beat",
+  "Listen to my rhyme, let your mind",
+  "The power of the beat makes you look at me and",
+  "Flow so radical, make the <%= ladiesFellas() %> all",
+  "I'm the rap king, make you pop, lock and",
+  "You spit rhymes like a pig try to"
+];
 
 var _topics = [
     "pleasure",
