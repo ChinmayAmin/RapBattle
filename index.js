@@ -430,7 +430,7 @@ function handleAnswerRequest(intent, session, callback) {
         if (session.attributes.currentLine == 3) {
             successOutput = 'Here is your haiku, ';
             _.each(session.attributes.userHaiku, function(result) {
-                successOutput += result + '<break time="0.25s"/>';
+                successOutput += result + '<break time="0.35s"/>';
             });
             checkRhyme(session.attributes.userHaiku[1], rapLine, function(success) {
                 var speechOutput;
@@ -526,6 +526,17 @@ function getLast(wordString) {
     }
     return '';
 }
+
+function getFirst(wordString) {
+    var words = wordString.split(' ');
+    for( var i = 0; i < words.length; i++) {
+        if (!_.isEmpty(words[i])) {
+            return words[i];
+        }
+    }
+    return '';
+}
+
 
 //function handleGetHelpRequest(intent, session, callback) {
 //    // Provide a help prompt for the user, explaining how the game is played. Then, continue the game
@@ -732,16 +743,17 @@ function getPlayerNumberIntent(session, intent) {
  * @return Name if the intent should be interpreted as a PlayerNameIntent, null if it should not be.
  */
 function getPlayerNameIntent(session, intent) {
-    if (session.attributes.players.length >= parseInt(session.attributes.playerCount)
+    if ((parseInt(session.attributes.playerCount) > 0
+         && session.attributes.players.length >= parseInt(session.attributes.playerCount))
         || isStartOverIntent(intent)
         || getPlayerNumberIntent(session, intent)) {
-        console.log("IS_PLAYER_NAME2");
+        console.log("IS_PLAYER_NAME2 session.attributes.players.length "+session.attributes.players.length + "parseInt(session.attributes.playerCount)" + parseInt(session.attributes.playerCount)+ "isStartOverIntent(intent)" + isStartOverIntent(intent) + "getPlayerNumberIntent(session, intent)" + getPlayerNumberIntent(session, intent));
         return null;
     }
     console.log("IS_PLAYER_NAME1");
     var text = getTextInput(intent);
     if (text.indexOf("my name is") == 0) {
-        console.log("IS_PLAYER_NAME2" + text);
+        console.log("IS_PLAYER_NAME2.1" + text);
         text = text.substr("my name is".length);
     }
     else if (text.indexOf("is my name") != -1 && text.indexOf("is my name") == (text.length - "is my name".length)) {
@@ -749,12 +761,12 @@ function getPlayerNameIntent(session, intent) {
         text = text.substr(0, text.length - "is my name".length);
     }
     console.log("IS_PLAYER_NAME4" + text);
-    var words = text.split(' ');
-    if (words.length > 0 && words[0].length > 0) {
-        console.log("IS_PLAYER_NAME5" + words + ", " + words[0]);
+    var exists = getFirst(text)
+    if (exists) {
+        console.log("IS_PLAYER_NAME5" + exists);
         return text;
     }
-    console.log("IS_PLAYER_NAME6" + words);
+    console.log("IS_PLAYER_NAME6" + exists);
     return null;
 }
 
