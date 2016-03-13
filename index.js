@@ -296,7 +296,7 @@ function generatePlayerCountMessage(greetPlayer, session, callback) {
         } else {
             welcomeMessage = "you have not played before";
         }
-        speechOutput = "Welcome " + previousPlayer.name + ", " + welcomeMessage + ".";
+        speechOutput = "Welcome " + previousPlayer.name + ", " + welcomeMessage + ". ";
     }
     else {
         speechOutput = 'Welcome to Rap Battle!';
@@ -319,7 +319,7 @@ function generateTopicMessage(greetPlayer, session, callback) {
         } else {
             welcomeMessage = "you have not played before";
         }
-        speechOutput = "Welcome " + previousPlayer.name + ", " + welcomeMessage + ".";
+        speechOutput = "Welcome " + previousPlayer.name + ", " + welcomeMessage + ". ";
     }
     var rapTopic = generateTopic();
 
@@ -330,7 +330,6 @@ function generateTopicMessage(greetPlayer, session, callback) {
             + '. Three <break time=".5s"/> two <break time=".5s"/> one, you\'re on!';
     var repromptText = "The topic is " + rapTopic;
 
-    speechOutput += "The topic is " + rapTopic + ". " + session.attributes.players[0] + ", get ready to give your first";
     session.attributes.speechOutput = speechOutput;
     session.attributes.repromptText = repromptText;
     callback(session.attributes,
