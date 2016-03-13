@@ -340,9 +340,9 @@ function generateTopicMessage(greetPlayer, session, callback) {
     session.attributes.rapTopic = generateTopic();
     console.log("RAP TOPIC is " + session.attributes.rapTopic);
     session.attributes.currentLine = 1;
-    var user = getPlayerWithTurn(session);
+    var user = getPlayerWithLine(session, 1);
     speechOutput += 'Your topic is ' + session.attributes.rapTopic + '. '+user.name+ ' get ready to give the ' +
-            'first five syllable line of a Haiku about ' + session.attributes.rapTopic
+            'first five beat line of a Haiku about ' + session.attributes.rapTopic
             + '. Three <break time=".5s"/> two <break time=".5s"/> one, you\'re on!';
     var repromptText = "The topic is " + session.attributes.rapTopic;
 
@@ -394,138 +394,161 @@ function getRankingDescription(player) {
     }
 }
 
-
 function handleAnswerRequest(intent, session, callback) {
-    var speechOutput = "";
-    var gameInProgress = session.attributes && session.attributes.rapTopic;
-    var answerSlotValid = isValidRap(session, intent);
-    var score;
-    if (!gameInProgress) {
+    if (!session.attributes || !session.attributes.currentLine) {
         console.log("Game not in progress");
         getWelcomeResponse(session, callback)
-    } else if (!answerSlotValid) {
-	      //Award points based on what the user said here
-        speechOutput = 'That was whack. Your needed 5 beats but you said ' + countSyllables(getRapLine(intent)) + ' syllables.';
-        if(session.attributes.currentLine == 2) {
-          speechOutput = 'That was whack. Your needed 7 beats but you said ' + countSyllables(getRapLine(intent)) + ' syllables.';
-
-        }
-        var reprompt = 'The topic is ' + session.attributes.rapTopic;
-        callback(session.attributes,
-            buildSpeechletResponse(CARD_TITLE, speechOutput, reprompt, false));
-    } else {
-        // They have given us a rap line, and we need to know what line we are on.
-        var rapLine = getRapLine(intent),
-            successResult = '',
-            endSession = false;
-        session.attributes.userHaiku.push(rapLine);
-        console.log("CURRENTLINE1 = "+ session.attributes.currentLine);
-        session.attributes.currentLine++;
-        console.log("CURRENTLINE2 = "+ session.attributes.currentLine);
-        //'Very good. Here is your Haiku: <break time="0.5s"/>' + iterateLine(getRapLine(intent));
-        var repromptText = "Rap topic is " + session.attributes.rapTopic;
-        speechOutput += getTextForNextLine(session.attributes);
-
-        console.log("CURRENTLINE2.1 = "+ session.attributes.currentLine);
-        if(session.attributes.currentLine > 3) {
-            console.log("CURRENTLINE3 = "+ session.attributes.currentLine);
-            speechOutput += 'Very good. Here is your haiku, ';
-            _.each(session.attributes.userHaiku, function(result) {
-                speechOutput += result + '<break time="0.25s"/>';
-            });
-            endSession = true;
-        }
-        console.log("CURRENTLINE3 = "+ session.attributes.currentLine);
-
-        session.attributes.speechOutput = speechOutput;
-        session.attributes.repromptText = repromptText;
-
-        if (endSession) {
-            async.waterfall([
-                function(cb){
-                    calculateRapScore(session.attributes.userHaiku,cb),
-                    function(score, cb) {
-                        ddb.getItem('Haiku', 0, null, {}, function(err, res, cap) {
-                            cb(err,res,score);
-                        });
-                    },
-                    function(item, score){
-                        var storeItem = {
-                            id: item.lastID,
-                            haiku: session.attributes.userHaiku.join(','),
-                            score: score || 0
-                        };
-                        ddb.putItem('Haiku',storeItem, {}, function(err, res, cap) {
-                            cb(err, score);
-                        });
-                    };
-                }
-            ], function(err, score){
-                if (score) {
-                    session.attributes.score = score;
-                    speechOutput += 'Your score is: ' + score + '!';
-                }
-                callback(session.attributes, buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, endSession));
-            });
-        } else {
-            callback(session.attributes, buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, endSession));
-        }
-    }
-}
-
-function getTextForNextLine(sessionAttributes) {
-    var result = '';
-    if(sessionAttributes.currentLine == 2) {
-        result = 'Very good. Get ready to give the seven syllable line, ' + '<break time="0.5s"/> Three <break time="0.5s"/> two <break time="0.5s"/> one, you\'re up!'
-    } else if (sessionAttributes.currentLine == 3) {
-        result = 'Very good. Get ready to give the second five syllable line, ' + '<break time="0.5s"/> Three <break time="0.5s"/> two <break time="0.5s"/> one, you\'re rhyming!'
-    }
-
-    return result;
-}
-
-function handleRepeatRequest(intent, session, callback) {
-    // Repeat the previous speechOutput and repromptText from the session attributes if available
-    // else start a new game session
-    if (!session.attributes || !session.attributes.speechOutput) {
-        getWelcomeResponse(session, callback);
-    } else {
-        callback(session.attributes,
-            buildSpeechletResponseWithoutCard(session.attributes.speechOutput, session.attributes.repromptText, false));
-    }
-}
-
-function handleGetHelpRequest(intent, session, callback) {
-    // Provide a help prompt for the user, explaining how the game is played. Then, continue the game
-    // if there is one in progress, or provide the option to start another one.
-
-    // Set a flag to track that we're in the Help state.
-    session.attributes.userPromptedToContinue = true;
-
-    // Do not edit the help dialogue. This has been created by the Alexa team to demonstrate best practices.
-
-    var speechOutput = "I will give you a random topic, try your best to rap about it. I'll drop the beat for you.",
-        repromptText = "To respond, start by saying a sentence about the topic. "
-        + "Would you like to keep playing?";
-        var shouldEndSession = false;
-    callback(session.attributes,
-        buildSpeechletResponseWithoutCard(speechOutput, repromptText, shouldEndSession));
-}
-
-function handleFinishSessionRequest(intent, session, callback) {
-    // End the session with a "Good bye!" if the user wants to quit the game
-    callback(session.attributes,
-        buildSpeechletResponseWithoutCard("Good bye!", "", true));
-}
-
-function isValidRap(session, intent) {
-    if(session.attributes.currentLine === 2) {
-      return (countSyllables(getRapLine(intent)) === 7);
     }
     else {
-      return (countSyllables(getRapLine(intent)) === 5);
+        // Do we need to ryhme?
+        // What do we need to rhyme with?
+        // How many beats do we need for the line?
+        // What's the score?
+        // Are we done the rap?
+        var targetBeats;
+        var successOutput;
+        if (session.attributes.currentLine == 1) {
+            targetBeats = 5;
+            var user = getPlayerWithLine(session, 2);
+            successOutput = 'Right on! ' + user.name + ' get ready to give the next seven beat line, ' + '<break time="0.5s"/> Three <break time="0.5s"/> two <break time="0.5s"/> one, you\'re up!'
+        } else if (session.attributes.currentLine == 2) {
+            targetBeats = 7;
+            var user = getPlayerWithLine(session, 3);
+            successOutput = 'Very good. '+user.name+ ' get ready to rhyme with the next five beat line, ' + '<break time="0.5s"/> Three <break time="0.5s"/> two <break time="0.5s"/> one, you\'re rhyming!'
+        }
+        else if (session.attributes.currentLine == 3) {
+            targetBeats = 5;
+        }
+        var rapLine = getRapLine(intent);
+        if (countSyllables(rapLine) != targetBeats) {
+            tryAgainWrongBeats(targetBeats, countSyllables(rapLine), session, callback);
+            return;
+        }
+        session.attributes.userHaiku.push(rapLine);
+        var repromptText = "Rap topic is " + session.attributes.rapTopic;
+
+        if (session.attributes.currentLine == 3) {
+            successOutput = 'Here is your haiku, ';
+            _.each(session.attributes.userHaiku, function(result) {
+                successOutput += result + '<break time="0.25s"/>';
+            });
+            checkRhyme(session.attributes.userHaiku[1], rapLine, function(success) {
+                var speechOutput;
+                if (success) {
+                    speechOutput = 'Very good!' + successOutput;
+                }
+                else {
+                    speechOutput = 'Missed the rhyme, try it next time! ' + successOutput;
+                }
+                checkScore(session, function(err, score) {
+                    if (score) {
+                        session.attributes.score = score;
+                        speechOutput += 'Your score is: ' + score + '!';
+                    }
+                    session.attributes.speechOutput = speechOutput;
+                    session.attributes.repromptText = repromptText;
+                    session.attributes.currentLine++;
+                    callback(session.attributes, buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, true));
+                })
+            });
+        }
+        else {
+            session.attributes.speechOutput = successOutput;
+            session.attributes.repromptText = repromptText;
+            session.attributes.currentLine++;
+            callback(session.attributes, buildSpeechletResponse(CARD_TITLE, successOutput, repromptText, false));
+        }
     }
 }
+
+function tryAgainWrongBeats(targetBeats, actualBeats, session, callback) {
+    var speechOutput = getRandomNegativeDescription() + '. You needed ' + targetBeats + ' beats but you said ' + actualBeats;
+    var reprompt = 'The topic is ' + session.attributes.rapTopic;
+    callback(session.attributes,
+        buildSpeechletResponse(CARD_TITLE, speechOutput, reprompt, false));
+}
+
+function getRandomNegativeDescription() {
+    var descriptions = ['That was foo foo gazy', 'You must be tweaking', 'That was huff'];
+    var randomIndex = Math.floor(Math.random() * descriptions.length) + 0;
+    return descriptions[randomIndex];
+}
+
+/**
+ * @param scoreCallback function(err, score)
+ */
+function checkScore(session, scoreCallback) {
+        async.waterfall([
+            function(cb){
+                calculateRapScore(session.attributes.userHaiku,cb),
+                function(score, cb) {
+                    ddb.getItem('Haiku', 0, null, {}, function(err, res, cap) {
+                        cb(err,res,score);
+                    });
+                },
+                function(item, score){
+                    var storeItem = {
+                        id: item.lastID,
+                        haiku: session.attributes.userHaiku.join(','),
+                        score: score || 0
+                    };
+                    ddb.putItem('Haiku',storeItem, {}, function(err, res, cap) {
+                        cb(err, score);
+                    });
+                }
+            }
+        ], scoreCallback);
+}
+
+/**
+ * @param rhymeCallback function(success/Boolean)
+ */
+function checkRhyme(targetLine, currentLine, rhymeCallback) {
+    var target = getLast(targetLine);
+    var check = getLast(currentLine);
+    rhymeLookup(target, function (result) {
+        for (var i = 0; i < result.length; i++) {
+            if (result[i].word == check) {
+                rhymeCallback(true);
+                return;
+            }
+        }
+        rhymeCallback(false)
+    });
+}
+
+function getLast(wordString) {
+    var words = wordString.split(' ');
+    for( var i = words.length - 1; i >= 0; i--) {
+        if (!_.isEmpty(words[i])) {
+            return words[i];
+        }
+    }
+    return '';
+}
+
+//function handleGetHelpRequest(intent, session, callback) {
+//    // Provide a help prompt for the user, explaining how the game is played. Then, continue the game
+//    // if there is one in progress, or provide the option to start another one.
+//
+//    // Set a flag to track that we're in the Help state.
+//    session.attributes.userPromptedToContinue = true;
+//
+//    // Do not edit the help dialogue. This has been created by the Alexa team to demonstrate best practices.
+//
+//    var speechOutput = "I will give you a random topic, try your best to rap about it. I'll drop the beat for you.",
+//        repromptText = "To respond, start by saying a sentence about the topic. "
+//        + "Would you like to keep playing?";
+//        var shouldEndSession = false;
+//    callback(session.attributes,
+//        buildSpeechletResponseWithoutCard(speechOutput, repromptText, shouldEndSession));
+//}
+//
+//function handleFinishSessionRequest(intent, session, callback) {
+//    // End the session with a "Good bye!" if the user wants to quit the game
+//    callback(session.attributes,
+//        buildSpeechletResponseWithoutCard("Good bye!", "", true));
+//}
 
 function countSyllables(line) {
   var syllableCount = 0;
@@ -581,6 +604,9 @@ function buildResponse(sessionAttributes, speechletResponse) {
     };
 }
 
+/**
+ * @param callback Called with [{"word":"address","score":1398,"numSyllables":2},...]
+ */
 function rhymeLookup(rhyme, callback) {
   //This function takes in an word input and returns a JSON of words that rhyme with the input word
   //Params of JSON include word, number of variables, and how closely the word rhymes with input word
@@ -665,8 +691,8 @@ function getPlayerCount(session) {
 /**
  * @returns User who's turn it is.
  */
-function getPlayerWithTurn(session) {
-    return session.attributes.players[(session.attributes.currentLine - 1) % session.attributes.players.length];
+function getPlayerWithLine(session, line) {
+    return session.attributes.players[(line-1) % session.attributes.players.length];
 }
 
 /**
