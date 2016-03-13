@@ -7,80 +7,83 @@ var _ = require('lodash');
 var num2text = require('num2text');
 var ddb = require('dynamodb').ddb({ accessKeyId: 'AKIAJAAV4J67C33OOHFA', secretAccessKey: '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'});
 var async = require('async');
-var line-templates = require('./line-templates');
+var rhyme = require('rhyme-plus');
 
-var _adjective =[
-  "You can try and battle me, but you're too",
-  "I make the MCs in the place wish that they were",
-  "My rhymes blow your mind and you think it's",
-  "My sweet-ass rhymes make your <%= womanMan() %> feel",
-  "Now I'm gonna tell you why you ain't",
-  "You'll never beat me 'cause I'm so",
-  "If you're gonna battle me, then you gotta be",
-  "When I rock a mic you know I rock it real",
-  "If a rapper tries to step I'm gonna get",
-  "When I'm on the stage the <%= ladiesFellas() %> get",
-  "I'm smooth, you'll never catch me acting",
-  "Try and step to me I have to laugh, it's so",
-  "My style tried and tested, guaranteed most",
-  "Way I rock the mic you know I'm born",
-  "See you try to rhyme, it come out just so",
-  "I'm the greatest MC, internationally"
-];
+var _lineTemplates = ["_adjective", "_adverb", "_noun", "_propernoun", "_verbtransistive"]
+var list = {
+  _adjective: [
+    "You can try and battle me, but you're too",
+    "I make the MCs in the place wish that they were",
+    "My rhymes blow your mind and you think it's",
+    "My sweet-ass rhymes make your man feel",
+    "Now I'm gonna tell you why you ain't",
+    "You'll never beat me 'cause I'm so",
+    "If you're gonna battle me, then you gotta be",
+    "When I rock a mic you know I rock it real",
+    "If a rapper tries to step I'm gonna get",
+    "When I'm on the stage the ladies get",
+    "I'm smooth, you'll never catch me acting",
+    "Try and step to me I have to laugh, it's so",
+    "My style tried and tested, guaranteed most",
+    "Way I rock the mic you know I'm born",
+    "See you try to rhyme, it come out just so",
+    "I'm the greatest MC, internationally"
+  ],
 
-var _adverb = [
-  "You know I rock the mic so",
-  "Everybody knows I treat all the <%= ladiesFellas() %>",
-  "Everybody in the club looks at me so",
-  "You're just jealous 'cause I rap",
-  "Catch <%= youMe() %> on the streets, walking by so",
-  "My DJ drop the beat I pick it up most"
-];
+  _adverb: [
+    "You know I rock the mic so",
+    "Everybody knows I treat all the fellas",
+    "Everybody in the club looks at me so",
+    "You're just jealous 'cause I rap",
+    "Catch <%= youMe() %> on the streets, walking by so",
+    "My DJ drop the beat I pick it up most"
+  ],
 
-var _noun = [
-  "I'm the illest MC to ever rock the",
-  "When I'm on the mic you realize you're <%= a() %>",
-  "My rhymes bring the power like a raging",
-  "If you can't handle this then you're nothing but <%= a() %>",
-  "When I come to a battle I'm strapped with <%= a() %>",
-  "When you battle me it's like you battle <%= a() %>",
-  "Every other MC is a sucker",
-  "There's nobody like me 'cause I'm the greatest",
-  "You hear my freestyle and you drop your",
-  "My flow and my style both blow away the",
-  "My posse's got my back and my <%= sistasHomies() %> got my",
-  "Sweeter than molasses, and stronger than <%= a() %>",
-  "Try to step to me and I'mma wreck your",
-  "Wherever I go, people give me some",
-  "You're nothin' but a scrub, word to your",
-  "I'm a lyricist, I'm a microphone",
-  "I write my rhymes while I chill in my",
-  "They called me a new jack, but I'm a new",
-  "Master of the game, I'm the rap",
-  "I know what you want, what you want's <%= a() %>",
-  "My DJ is the backup and I'm the",
-  "When I'm on the mic I'm guaranteed to bring the"
-]
+  _noun: [
+    "I'm the illest MC to ever rock the",
+    "When I'm on the mic you realize you're a",
+    "My rhymes bring the power like a raging",
+    "If you can't handle this then you're nothing but a",
+    "When I come to a battle I'm strapped with a",
+    "When you battle me it's like you battle a",
+    "Every other MC is a sucker",
+    "There's nobody like me 'cause I'm the greatest",
+    "You hear my freestyle and you drop your",
+    "My flow and my style both blow away the",
+    "My posse's got my back and my sistas got my",
+    "Sweeter than molasses, and stronger than a",
+    "Try to step to me and I'mma wreck your",
+    "Wherever I go, people give me some",
+    "You're nothin' but a scrub, word to your",
+    "I'm a lyricist, I'm a microphone",
+    "I write my rhymes while I chill in my",
+    "They called me a new jack, but I'm a new",
+    "Master of the game, I'm the rap",
+    "I know what you want, what you want's a",
+    "My DJ is the backup and I'm the",
+    "When I'm on the mic I'm guaranteed to bring the"
+  ],
+  _propernoun: [
+    "I'm playing you and your best friend",
+    "I know how to charm a woman, just ask your friend",
+    "I've battled every MC, every Tom, Dick, and",
+    "You wish you had a DJ like DJ",
+    "Claim you're MC so-and-so but I just call you",
+    "Knew a cat like you, by the name of",
+    "I got real freaky with a man named"
+  ],
 
-var _properNoun = [
-  "I'm playing you and your best friend",
-  "I know how to charm a <%= womanMan() %>, just ask your friend",
-  "I've battled every MC, every Tom, Dick, and",
-  "You wish you had a DJ like DJ",
-  "Claim you're MC so-and-so but I just call you",
-  "Knew a cat like you, by the name of",
-  "I got real freaky with a <%= womanMan() %> named"
-];
+  _verbtransistive: [
+    "My rhyme profile makes the ladies",
+    "My DJ is the greatest, he makes the beat",
+    "Listen to my rhyme, let your mind",
+    "The power of the beat makes you look at me and",
+    "Flow so radical, make the fellas all",
+    "I'm the rap king, make you pop, lock and",
+    "You spit rhymes like a pig try to"
+  ]
 
-var _verbTransistive = [
-  "My rhyme profile makes the <%= ladiesFellas() %>",
-  "My DJ is the greatest, <%= sheHe() %> makes the beat",
-  "Listen to my rhyme, let your mind",
-  "The power of the beat makes you look at me and",
-  "Flow so radical, make the <%= ladiesFellas() %> all",
-  "I'm the rap king, make you pop, lock and",
-  "You spit rhymes like a pig try to"
-];
+};
 
 var _topics = [
     "pleasure",
@@ -218,7 +221,6 @@ function initSession(session) {
     session.attributes.players = [];
     session.attributes.currentLine = 0;
     session.attributes.rapTopic = null;
-    console.log("RAP TOPIC2 is " + session.attributes.rapTopic);
     session.attributes.score = 0;
     session.attributes.userHaiku = [];
 }
@@ -245,6 +247,26 @@ function onIntent(intentRequest, session, callback) {
     console.log("onIntent "+intentName+", requestId=" + intentRequest.requestId
         + ", sessionId=" + session.sessionId);
 
+
+    // handle yes/no intent after the user has been prompted
+    if (session.attributes && session.attributes.userPromptedToContinue) {
+        delete session.attributes.userPromptedToContinue;
+        if ("AMAZON.NoIntent" === intentName) {
+            handleFinishSessionRequest(intent, session, callback);
+        } else if ("AMAZON.YesIntent" === intentName) {
+            handleRepeatRequest(intent, session, callback);
+        }
+    }
+    //
+    // session.attributes.rapBattleCount = 1;
+    // if(session.attributes.rapBattleCount % 2) {
+    //   handleBattleIntent(intent, session, callback);
+    //   return;
+    // } else if(intentName !== "BattleIntent" && session.attributes.rapBattleCount > 1){
+    //   handleOpponentTurn(intent, session, callback);
+    //   return;
+    // }
+
     // dispatch custom intents to handlers here
     // if ("RapLine" === intentName) {
     //     handleAnswerRequest(intent, session, callback);
@@ -253,30 +275,37 @@ function onIntent(intentRequest, session, callback) {
     // } else if("PlayerNumberIntent" === intentName) {
     //     handlePlayerCountRequest(intent, session, callback);
     // } else if("BattleIntent" === intentName) {
-    //     handleBattleIntent(intent, session, callback);
+        // handleBattleIntent(intent, session, callback);
     // } else if ("InspireIntent" === intentName) {
     //     retrieveHaiku(session, callback);
     // } else if ("AMAZON.StartOverIntent" === intentName) {
-    if (isStartOverIntent(intent)) {
+    if(session.attributes.inProgress) {
+       handleOpponentTurn(intent, session, callback);
+     } else if("BattleIntent" === intentName) {
+         handleBattleIntent(intent, session, callback);
+      } else if (isStartOverIntent(intent)) {
         console.log("StartOverIntent");
         getWelcomeResponse(session, callback);
     }
-    else if (getPlayerNumberIntent(session, intent)) {
-        console.log("PlayerNumberIntent");
-        handlePlayerCountRequest(getPlayerNumberIntent(session, intent), session, callback);
-    }
-    else if (getPlayerNameIntent(session, intent)) {
-        console.log("PlayerNameIntent");
-        handlePlayerNameRequest(getPlayerNameIntent(session, intent), session, callback);
-    }
+    // else if (startBattleIntent(session, intent)) {
+    //     handleBattleIntent(session, intent, callback);
+    // }
+    // else if (getPlayerNumberIntent(session, intent)) {
+    //     console.log("PlayerNumberIntent");
+    //     handlePlayerCountRequest(getPlayerNumberIntent(session, intent), session, callback);
+    // }
+    // else if (getPlayerNameIntent(session, intent)) {
+    //     console.log("PlayerNameIntent");
+    //     handlePlayerNameRequest(getPlayerNameIntent(session, intent), session, callback);
+    // }
     else if (isInspireMeIntent(session, intent)) {
         console.log("InspireMeIntent");
         retrieveHaiku(session, callback);
     }
-    else {
-        console.log("AnswerRequest");
-        handleAnswerRequest(intent, session, callback);
-    }
+    // else {
+    //     console.log("AnswerRequest");
+    //     handleAnswerRequest(intent, session, callback);
+    // }
 }
 
 /**
@@ -423,7 +452,6 @@ function generateTopicMessage(greetPlayer, session, callback) {
         speechOutput += "Welcome " + previousPlayer.name + ", " + welcomeMessage + ". ";
     }
     session.attributes.rapTopic = generateTopic();
-    console.log("RAP TOPIC is " + session.attributes.rapTopic);
     session.attributes.currentLine = 1;
     var user = getPlayerWithTurn(session);
     speechOutput += 'Your topic is ' + session.attributes.rapTopic + '. '+user.name+ ' get ready to give the ' +
@@ -486,7 +514,6 @@ function handleAnswerRequest(intent, session, callback) {
     var answerSlotValid = isValidRap(session, intent);
     var score;
     if (!gameInProgress) {
-        console.log("Game not in progress");
         getWelcomeResponse(session, callback)
     } else if (!answerSlotValid) {
 	      //Award points based on what the user said here
@@ -504,23 +531,18 @@ function handleAnswerRequest(intent, session, callback) {
             successResult = '',
             endSession = false;
         session.attributes.userHaiku.push(rapLine);
-        console.log("CURRENTLINE1 = "+ session.attributes.currentLine);
         session.attributes.currentLine++;
-        console.log("CURRENTLINE2 = "+ session.attributes.currentLine);
         //'Very good. Here is your Haiku: <break time="0.5s"/>' + iterateLine(getRapLine(intent));
         var repromptText = "Rap topic is " + session.attributes.rapTopic;
         speechOutput += getTextForNextLine(session.attributes);
 
-        console.log("CURRENTLINE2.1 = "+ session.attributes.currentLine);
         if(session.attributes.currentLine > 3) {
-            console.log("CURRENTLINE3 = "+ session.attributes.currentLine);
             speechOutput += 'Very good. Here is your haiku, ';
             _.each(session.attributes.userHaiku, function(result) {
                 speechOutput += result + '<break time="0.25s"/>';
             });
             endSession = true;
         }
-        console.log("CURRENTLINE3 = "+ session.attributes.currentLine);
 
         session.attributes.speechOutput = speechOutput;
         session.attributes.repromptText = repromptText;
@@ -541,6 +563,7 @@ function handleAnswerRequest(intent, session, callback) {
                             score: score || 0
                         };
                         ddb.putItem('Haiku',storeItem, {}, function(err, res, cap) {
+                            console.log(err, res);
                             cb(err, score);
                         });
                     };
@@ -771,6 +794,11 @@ function isInspireMeIntent(session, intent) {
     return text == "inspire me";
 }
 
+function startBattleIntent(session, intent) {
+    var text = getTextInput(intent);
+    return text == "battle";
+}
+
 
 /**
  * @return Number count if the intent should be interpreted as a PlayerNumberIntent, null if it should not be.
@@ -794,28 +822,120 @@ function getPlayerNameIntent(session, intent) {
     if (session.attributes.players.length >= parseInt(session.attributes.playerCount)
         || isStartOverIntent(intent)
         || getPlayerNumberIntent(session, intent)) {
-        console.log("IS_PLAYER_NAME2");
         return null;
     }
-    console.log("IS_PLAYER_NAME1");
     var text = getTextInput(intent);
     if (text.indexOf("my name is") == 0) {
-        console.log("IS_PLAYER_NAME2" + text);
         text = text.substr("my name is".length);
     }
     else if (text.indexOf("is my name") != -1 && text.indexOf("is my name") == (text.length - "is my name".length)) {
-        console.log("IS_PLAYER_NAME3" + text);
         text = text.substr(0, text.length - "is my name".length);
     }
-    console.log("IS_PLAYER_NAME4" + text);
     var words = text.split(' ');
     if (words.length > 0 && words[0].length > 0) {
-        console.log("IS_PLAYER_NAME5" + words + ", " + words[0]);
         return text;
     }
-    console.log("IS_PLAYER_NAME6" + words);
     return null;
+  }
+
+function handleOpponentTurn(intent, session, callback) {
+  if(session.attributes.rapBattleCount === 3) {
+    callback(session.attributes,
+        buildSpeechletResponse(CARD_TITLE, 'You beat me son. I have failed you, snoopDog.','', true));
+    return;
+  }
+
+  session.attributes.rapBattleCount++;
+  var inputLine = intent.slots.FiveSyllableLine.value || intent.slots.SevenSyllableLine.value;
+  var lineArray = inputLine.split(" ");
+  var speechOutput;
+
+
+  rhyme(function (r) {
+    if(r.doRhyme(lineArray[lineArray.length-1], session.attributes.lastWord)){
+      speechOutput = 'Not Bad, now my turn';
+      generateAlexaRhyme(session, callback);
+    } else {
+      callback(session.attributes,
+          buildSpeechletResponse(CARD_TITLE, 'You think that rhymed? You must be tweaking. Come back when you\'re better','', true));
+    }
+  });
 }
 
 
->>>>>>> 23948e5094825ebbe520ae9c7b152d29335d7f53
+function handleBattleIntent(intent, session, callback) {
+  session.attributes.inProgress = true;
+  session.attributes.rapBattleCount=0;
+  generateAlexaRhyme(session, callback);
+}
+
+function generateAlexaRhyme(session, callback) {
+  var randomIndex1 = Math.floor(Math.random() * _lineTemplates.length);
+  var randomTopic1 = list[_lineTemplates[randomIndex1]];
+  var randomTopicIndex1 = Math.floor(Math.random() * randomTopic1.length);
+  var randomLine1 = randomTopic1[randomTopicIndex1];
+
+  var randomIndex2 = Math.floor(Math.random() * _lineTemplates.length);
+  var randomTopic2 = list[_lineTemplates[randomIndex2]];
+  var randomTopicIndex2 = Math.floor(Math.random() * randomTopic2.length);
+  var randomLine2 = randomTopic2[randomTopicIndex2];
+
+  getRandomWordPair(function(err, wordArray){
+    if(!err) {
+      var speechOutput = '';
+      randomLine1 += ' ' + wordArray[0];
+      randomLine2 += ' ' + wordArray[1];
+      var repromptText = "You suck. Care to try again?";
+      if(session.attributes.rapBattleCount > 0) {
+        speechOutput = 'Not bad, now my turn. <break time="0.5s"/>' + randomLine1 + '<break time="0.5s"/>' + randomLine2;
+      } else {
+        speechOutput = 'So you think you have got what it takes to beat the champ? Follow my rhyme if you want to survive. <break time="0.5s"/>' + randomLine1 + '<break time="0.5s"/>' + randomLine2 + '<break time="0.5s"/>You\'re up next ';
+      }
+      session.attributes.lastWord = wordArray[1];
+
+      callback(session.attributes,
+          buildSpeechletResponse(CARD_TITLE, speechOutput,repromptText, false));
+    } else {
+      var speechOutput = 'You beat me son. I have failed you, ' + '<break time="0.5s"/> snoopDog.';
+      callback(session.attributes,
+          buildSpeechletResponse(CARD_TITLE, speechOutput,'', true));
+    }
+  });
+
+}
+
+function getRandomWordPair(callback) {
+  async.waterfall([
+    function(cb) {
+    request('http://api.wordnik.com:80/v4/words.json/randomWord?hasDictionaryDef=false&includePartOfSpeech=noun&minCorpusCount=0&maxCorpusCount=-1&minDictionaryCount=1&maxDictionaryCount=-1&minLength=2&maxLength=8&api_key=a2a73e7b926c924fad7001ca3111acd55af2ffabf50eb4ae5', function (error, response, body) {
+      if (!error && response.statusCode == 200) {
+            var word1 = (JSON.parse(body)).word;
+            cb(null, word1);
+          }
+          else {
+            cb(err);
+          }
+    })
+  },
+  function(word, cb){
+    request('https://api.datamuse.com/words?rel_rhy=' +word, function (error, response, body) {
+      if (!error && response.statusCode == 200) {
+            var word2 = JSON.parse(body);
+            if (word2 && word2.length) {
+              cb(null,[word, word2[0].word]);
+            } else {
+              cb('not found');
+            }
+          }
+          else {
+            cb(err);
+          }
+      });
+  }],function(err,data){
+    if (err){
+      getRandomWordPair(callback);
+    } else {
+      callback(err,data);
+    }
+  });
+}
