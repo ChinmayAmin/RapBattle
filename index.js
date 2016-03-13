@@ -129,7 +129,7 @@ exports.handler = function (event, context) {
             context.succeed();
         }
     } catch (e) {
-        context.fail("Exception: " + e);
+        context.fail("Exception: " + e + ", Stack " + e.stack);
     }
 };
 
@@ -140,7 +140,15 @@ function onSessionStarted(sessionStartedRequest, session) {
     console.log("onSessionStarted requestId=" + sessionStartedRequest.requestId
         + ", sessionId=" + session.sessionId);
 
-    // add any session init logic here
+    if (!session.attributes) {
+        session.attributes = {};
+    }
+    session.attributes.playerCount = 0;
+    session.attributes.players = [];
+    session.attributes.currentLine = 0;
+    session.attributes.rapTopic = null;
+    session.attributes.score = 0;
+    session.attributes.userHaiku = [];
 }
 
 /**
@@ -150,18 +158,20 @@ function onLaunch(launchRequest, session, callback) {
     console.log("onLaunch requestId=" + launchRequest.requestId
         + ", sessionId=" + session.sessionId);
 
-    getWelcomeResponse(callback);
+    getWelcomeResponse(session, callback);
 }
 
 /**
  * Called when the user specifies an intent for this skill.
  */
 function onIntent(intentRequest, session, callback) {
-    console.log("onIntent requestId=" + intentRequest.requestId
-        + ", sessionId=" + session.sessionId);
+
 
     var intent = intentRequest.intent,
         intentName = intentRequest.intent.name;
+
+    console.log("onIntent "+intentName+", requestId=" + intentRequest.requestId
+        + ", sessionId=" + session.sessionId);
 
     // handle yes/no intent after the user has been prompted
     if (session.attributes && session.attributes.userPromptedToContinue) {
@@ -176,10 +186,14 @@ function onIntent(intentRequest, session, callback) {
     // dispatch custom intents to handlers here
     if ("RapLine" === intentName) {
         handleAnswerRequest(intent, session, callback);
+    } else if ("PlayerNameIntent" === intentName) {
+        handlePlayerNameRequest(intent, session, callback);
+    } else if("PlayerNumberIntent" === intentName) {
+        handlePlayerCountRequest(intent, session, callback);
     } else if ("InspireIntent" === intentName) {
         retrieveHaiku(session, callback);
     } else if ("AMAZON.StartOverIntent" === intentName) {
-        getWelcomeResponse(callback);
+        getWelcomeResponse(session, callback);
     } else if ("AMAZON.RepeatIntent" === intentName) {
         handleRepeatRequest(intent, session, callback);
     } else if ("AMAZON.HelpIntent" === intentName) {
@@ -211,28 +225,12 @@ function generateTopic() {
     return _topics[randomIndex];
 }
 
-var ANSWER_COUNT = 4;
-var GAME_LENGTH = 5;
 var CARD_TITLE = "Rap Battle"; // Be sure to change this for your skill.
 
-function getWelcomeResponse(callback) {
-    var sessionAttributes = {},
-        rapTopic = generateTopic(),
-        speechOutput = 'Welcome to Rap Battle! Your topic is ' + rapTopic + '.... Player one, get ready to give the ' +
-            'first five syllable line of a Haiku about ' + rapTopic
-            + '. <break time="0.5s"/> Three <break time="0.5s"/> two <break time="0.5s"/> one, you\'re on!',
-        shouldEndSession = false,
-        repromptText = "The topic is " + rapTopic;
-        sessionAttributes = {
-            "rapTopic": rapTopic,
-            "speechOutput": speechOutput,
-            "repromptText": repromptText,
-            "score": 0,
-            "currentLine": 0,
-            "userHaiku": []
-    };
-    callback(sessionAttributes,
-        buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, shouldEndSession));
+function getWelcomeResponse(session, callback) {
+    // Clear players.
+    session.attributes.players = [];
+    generatePlayerCountMessage(false, session, callback);
 }
 
 function calculateRapScore(haiku, cb) {
@@ -272,6 +270,156 @@ function retrieveHaiku(session, callback) {
         }
     });
 }
+
+function handlePlayerCountRequest(intent, session, callback) {
+    var speechOutput;
+    if (!isValidNumber(intent)) {
+        speechOutput = "You don't know what a number is? You are funny! How many players are there?";
+    } else {
+        session.attributes.playerCount = parseInt(intent.slots.Count.value);
+        if (session.attributes.playerCount > 10) {
+            speechOutput = "This is a big party, only the 10 best rappers can play. How many players are there?";
+        }
+        else if (session.attributes.playerCount <= 0) {
+            speechOutput = "Sounds like no one wants to play! How many players are there?";
+        }
+        else {
+            if (session.attributes.players.length == session.attributes.playerCount) {
+                generateTopicMessage(false ,session, callback);
+            }
+            else {
+                generateNextPlayerMessage(false, session, callback);
+            }
+        }
+    }
+    callback(session.attributes,
+        buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, false));
+}
+
+function handlePlayerNameRequest(intent, session, callback) {
+    // Do we know how many players there are?
+    // Do we already have enough players?
+    // Response is always going to be be "Welcome XXXX, you are a new player", or "Welcome XXX, your ranking is XXXX"
+
+    if (!isValidName(intent)) {
+        //Award points based on what the user said here
+        var reprompt = session.attributes.speechOutput;
+        var speechOutput = "Your name is not from Planet Earth.";
+        callback(session.attributes,
+            buildSpeechletResponse(CARD_TITLE, speechOutput, reprompt, false));
+    } else {
+        // If we already have enough players, we are going to increase the number of players and add them to the end.
+        session.attributes.players = session.attributes.players ? session.attributes.players : [];
+        if (session.attributes.playerCount && session.attributes.players.length >= getPlayerCount(session)) {
+            session.attributes.playerCount = session.attributes.players.length + 1;
+        }
+        var user = getUserObject(session, intent.slots.Name.value);
+        user.timesPlayed += 1;
+        session.attributes.players.push(user);
+
+        if(!session.attributes.playerCount) {
+            generatePlayerCountMessage(true, session, callback);
+        } else if (session.attributes.players.length < getPlayerCount(session)) {
+            generateNextPlayerMessage(true, session, callback);
+        } else {
+            generateTopicMessage(true, session, callback);
+        }
+    }
+}
+
+function generatePlayerCountMessage(greetPlayer, session, callback) {
+    var speechOutput;
+    if (greetPlayer){
+        var players = session.attributes.players;
+        var previousPlayer = players[players.length - 1];
+        var welcomeMessage;
+        if (previousPlayer.timesPlayed > 1) {
+            welcomeMessage = "your ranking is " + getRankingDescription(previousPlayer);
+        } else {
+            welcomeMessage = "you have not played before";
+        }
+        speechOutput = "Welcome " + previousPlayer.name + ", " + welcomeMessage + ". ";
+    }
+    else {
+        speechOutput = 'Welcome to Rap Battle! ';
+    }
+    speechOutput += "How many players are there?";
+    session.attributes.speechOutput = speechOutput;
+    session.attributes.repromptText = speechOutput;
+    callback(session.attributes,
+        buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, false));
+}
+
+function generateTopicMessage(greetPlayer, session, callback) {
+    var speechOutput = "";
+    if (greetPlayer) {
+        var players = session.attributes.players;
+        var previousPlayer = players[players.length - 1];
+        var welcomeMessage;
+        if (previousPlayer.timesPlayed > 1) {
+            welcomeMessage = "your ranking is " + getRankingDescription(previousPlayer);
+        } else {
+            welcomeMessage = "you have not played before";
+        }
+        speechOutput = "Welcome " + previousPlayer.name + ", " + welcomeMessage + ". ";
+    }
+    var rapTopic = generateTopic();
+
+    session.attributes.currentLine = 1;
+    var user = getPlayerWithTurn(session);
+    speechOutput += 'Your topic is ' + rapTopic + '. '+user.name+ ' get ready to give the ' +
+            'first five syllable line of a Haiku about ' + rapTopic
+            + '. Three <break time=".5s"/> two <break time=".5s"/> one, you\'re on!';
+    var repromptText = "The topic is " + rapTopic;
+
+    session.attributes.speechOutput = speechOutput;
+    session.attributes.repromptText = repromptText;
+    callback(session.attributes,
+        buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, false));
+}
+
+function generateNextPlayerMessage(greetPlayer, session, callback) {
+    var players = session.attributes.players;
+    var speechOutput = "";
+    if (greetPlayer) {
+        var welcomeMessage;
+        var previousPlayer = players[players.length-1];
+        if (previousPlayer.timesPlayed > 1) {
+            welcomeMessage = "your ranking is " + getRankingDescription(previousPlayer);
+        }
+        else {
+            welcomeMessage = "you have not played before";
+        }
+        speechOutput += "Welcome " + previousPlayer.name + ", " +welcomeMessage + ". ";
+    }
+    speechOutput += "Player " + (players.length + 1) + " , what is your name?";
+    session.attributes.speechOutput = speechOutput;
+    session.attributes.repromptText = speechOutput;
+    callback(session.attributes,
+        buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, false));
+}
+
+function getRankingDescription(player) {
+    if (player.score < 5) {
+        return "bug";
+    }
+    else if (player.score < 10) {
+        return "dog"
+    }
+    else if (player.score < 20) {
+        return "wolf"
+    }
+    else if (player.score < 40) {
+        return "human"
+    }
+    else if (player.score < 80) {
+        return "computer"
+    }
+    else {
+        return "alien"
+    }
+}
+
 
 function handleAnswerRequest(intent, session, callback) {
     var speechOutput = "";
@@ -373,7 +521,7 @@ function handleRepeatRequest(intent, session, callback) {
     // Repeat the previous speechOutput and repromptText from the session attributes if available
     // else start a new game session
     if (!session.attributes || !session.attributes.speechOutput) {
-        getWelcomeResponse(callback);
+        getWelcomeResponse(session, callback);
     } else {
         callback(session.attributes,
             buildSpeechletResponseWithoutCard(session.attributes.speechOutput, session.attributes.repromptText, false));
@@ -418,6 +566,18 @@ function countSyllables(line) {
     syllableCount += syllable(word);
   })
   return syllableCount;
+}
+
+function isValidName(intent) {
+    // Note: the AMAZON.US_FIRST_NAME capitalizes the name if it recognizes the name.
+    //       We will let the users name themselves anything.
+    return intent.slots && intent.slots.Name && intent.slots.Name.value;
+}
+
+function isValidNumber(intent) {
+    var answerSlotFilled = intent.slots && intent.slots.Count && intent.slots.Count.value;
+    var answerSlotIsInt = answerSlotFilled && !isNaN(parseInt(intent.slots.Count.value));
+    return answerSlotIsInt;
 }
 
 // ------- Helper functions to build responses -------
@@ -504,4 +664,49 @@ function getRapLine(intent) {
 
 function iterateLine(rapLine) {
     return rapLine.replace(/\s/g, '<break time="0.25s"/>');
+}
+
+/**
+ * @return Known players for the given sessionId.
+ *         [
+ *          "John: {
+ *              name: "John",
+ *              allTimeScore: 10
+ *          }
+ *         ]
+ *         Uses database to get them.
+ */
+function getKnownPlayers(session) {
+    return {};
+}
+
+function getUserObject(session, name) {
+    var players = getKnownPlayers(session);
+    var player = players[name];
+    if (player) {
+        return player;
+    }
+    if (session.attributes && session.attributes.players) {
+        for (var i = 0; i < session.attributes.players.length; i++) {
+            if (session.attributes.players[i].name == name) {
+                return session.attributes.players[i];
+            }
+        }
+    }
+    return {
+        name: name,
+        allTimeScore: 0,
+        timesPlayed: 0
+    }
+}
+
+function getPlayerCount(session) {
+    return parseInt(session.attributes.playerCount);
+}
+
+/**
+ * @returns User who's turn it is.
+ */
+function getPlayerWithTurn(session) {
+    return session.attributes.players[(session.attributes.currentLine - 1) % session.attributes.players.length];
 }
