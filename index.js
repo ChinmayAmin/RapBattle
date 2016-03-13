@@ -258,12 +258,14 @@ function onIntent(intentRequest, session, callback) {
     }
 
     // dispatch custom intents to handlers here
-    if ("rapme" === intentName) {
+    if ("RapLine" === intentName) {
         handleAnswerRequest(intent, session, callback);
     } else if ("PlayerNameIntent" === intentName) {
         handlePlayerNameRequest(intent, session, callback);
     } else if("PlayerNumberIntent" === intentName) {
         handlePlayerCountRequest(intent, session, callback);
+    } else if("BattleIntent" === intentName) {
+        handleBattleIntent(intent, session, callback);
     } else if ("InspireIntent" === intentName) {
         retrieveHaiku(session, callback);
     } else if ("AMAZON.StartOverIntent" === intentName) {
@@ -783,4 +785,8 @@ function getPlayerCount(session) {
  */
 function getPlayerWithTurn(session) {
     return session.attributes.players[(session.attributes.currentLine - 1) % session.attributes.players.length];
+}
+
+function handleBattleIntent(intent, session, callback) {
+  
 }
