@@ -415,14 +415,11 @@ function handleAnswerRequest(intent, session, callback) {
         } else if (session.attributes.currentLine == 2) {
             targetBeats = 7;
             var user = getPlayerWithLine(session, 3);
-            successOutput = 'Very good. '+user.name+ 'get ready to rhyme with the next five beat line, ' + '<break time="0.5s"/> Three <break time="0.5s"/> two <break time="0.5s"/> one, you\'re rhyming!'
+            successOutput = 'Very good. '+user.name+ ' get ready to rhyme with the next five beat line, ' + '<break time="0.5s"/> Three <break time="0.5s"/> two <break time="0.5s"/> one, you\'re rhyming!'
         }
         else if (session.attributes.currentLine == 3) {
             targetBeats = 5;
-            successOutput = 'Here is your haiku, ';
-            _.each(session.attributes.userHaiku, function(result) {
-                successOutput += result + '<break time="0.25s"/>';
-            });
+
         }
         var rapLine = getRapLine(intent);
         if (countSyllables(rapLine) != targetBeats) {
@@ -430,10 +427,13 @@ function handleAnswerRequest(intent, session, callback) {
             return;
         }
         session.attributes.userHaiku.push(rapLine);
-        session.attributes.currentLine++;
         var repromptText = "Rap topic is " + session.attributes.rapTopic;
 
         if (session.attributes.currentLine == 3) {
+            successOutput = 'Here is your haiku, ';
+            _.each(session.attributes.userHaiku, function(result) {
+                successOutput += result + '<break time="0.25s"/>';
+            });
             checkRhyme(session.attributes.userHaiku[1], rapLine, function(success) {
                 var speechOutput;
                 if (success) {
@@ -442,13 +442,14 @@ function handleAnswerRequest(intent, session, callback) {
                 else {
                     speechOutput = 'Missed the rhyme, try it next time! ' + successOutput;
                 }
-                checkScore(function(err, score) {
+                checkScore(session, function(err, score) {
                     if (score) {
                         session.attributes.score = score;
                         speechOutput += 'Your score is: ' + score + '!';
                     }
                     session.attributes.speechOutput = speechOutput;
                     session.attributes.repromptText = repromptText;
+                    session.attributes.currentLine++;
                     callback(session.attributes, buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, true));
                 })
             });
@@ -456,6 +457,7 @@ function handleAnswerRequest(intent, session, callback) {
         else {
             session.attributes.speechOutput = successOutput;
             session.attributes.repromptText = repromptText;
+            session.attributes.currentLine++;
             callback(session.attributes, buildSpeechletResponse(CARD_TITLE, successOutput, repromptText, false));
         }
     }
@@ -477,7 +479,7 @@ function getRandomNegativeDescription() {
 /**
  * @param scoreCallback function(err, score)
  */
-function checkScore(scoreCallback) {
+function checkScore(session, scoreCallback) {
         async.waterfall([
             function(cb){
                 calculateRapScore(session.attributes.userHaiku,cb),
@@ -495,7 +497,7 @@ function checkScore(scoreCallback) {
                     ddb.putItem('Haiku',storeItem, {}, function(err, res, cap) {
                         cb(err, score);
                     });
-                };
+                }
             }
         ], scoreCallback);
 }
@@ -504,19 +506,27 @@ function checkScore(scoreCallback) {
  * @param rhymeCallback function(success/Boolean)
  */
 function checkRhyme(targetLine, currentLine, rhymeCallback) {
-    var previousWords = targetLine.split(' ');
-    var target = previousWords[previousWords.length - 1];
-    var chosenWord = currentLine.split(' ');
-    var check = chosenWord[chosenWord.length - 1];
+    var target = getLast(targetLine);
+    var check = getLast(currentLine);
     rhymeLookup(target, function (result) {
         for (var i = 0; i < result.length; i++) {
-            if (result["word"] == check) {
+            if (result[i].word == check) {
                 rhymeCallback(true);
                 return;
             }
         }
         rhymeCallback(false)
     });
+}
+
+function getLast(wordString) {
+    var words = wordString.split(' ');
+    for( var i = words.length - 1; i >= 0; i--) {
+        if (!_.isEmpty(words[i])) {
+            return words[i];
+        }
+    }
+    return '';
 }
 
 //function handleGetHelpRequest(intent, session, callback) {
@@ -684,7 +694,7 @@ function getPlayerCount(session) {
  * @returns User who's turn it is.
  */
 function getPlayerWithLine(session, line) {
-    return session.attributes.players[(line) % session.attributes.players.length];
+    return session.attributes.players[(line-1) % session.attributes.players.length];
 }
 
 /**
