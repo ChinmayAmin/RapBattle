@@ -143,6 +143,7 @@ function initSession(session) {
     session.attributes.playerCount = 0;
     session.attributes.players = [];
     session.attributes.currentLine = 0;
+    session.attributes.retries = 0;
     session.attributes.rapTopic = null;
     console.log("RAP TOPIC2 is " + session.attributes.rapTopic);
     session.attributes.score = 0;
@@ -176,6 +177,10 @@ function onIntent(intentRequest, session, callback) {
         console.log("StartOverIntent");
         getWelcomeResponse(session, callback);
     }
+    else if (isInspireMeIntent(session, intent)) {
+        console.log("InspireMeIntent");
+        retrieveHaiku(session, callback);
+    }
     else if (getPlayerNumberIntent(session, intent)) {
         console.log("PlayerNumberIntent");
         handlePlayerCountRequest(getPlayerNumberIntent(session, intent), session, callback);
@@ -183,10 +188,6 @@ function onIntent(intentRequest, session, callback) {
     else if (getPlayerNameIntent(session, intent)) {
         console.log("PlayerNameIntent");
         handlePlayerNameRequest(getPlayerNameIntent(session, intent), session, callback);
-    }
-    else if (isInspireMeIntent(session, intent)) {
-        console.log("InspireMeIntent");
-        retrieveHaiku(session, callback);
     }
     else {
         console.log("AnswerRequest");
@@ -250,9 +251,9 @@ function retrieveHaiku(session, callback) {
         }
     ],function(err, data){
         if (err) {
-            callback(session, buildSpeechletResponse(CARD_TITLE, 'Something went wrong', '', true));
+            callback(session, buildSpeechletResponse(CARD_TITLE, 'You are on your own', '', true));
         } else {
-            callback(session, buildSpeechletResponse(CARD_TITLE, data.haiku, 'Do you want to hear another one?', false));
+            callback(session, buildSpeechletResponse(CARD_TITLE, data.haiku, data.haiku, true));
         }
     });
 }
@@ -421,7 +422,14 @@ function handleAnswerRequest(intent, session, callback) {
         }
         var rapLine = getRapLine(intent);
         if (countSyllables(rapLine) != targetBeats) {
-            tryAgainWrongBeats(targetBeats, countSyllables(rapLine), session, callback);
+            if (session.attributes.retries == 0) {
+                session.attributes.retries = 1;
+                tryAgainWrongBeats(targetBeats, countSyllables(rapLine), session, callback);
+            }
+            else {
+                var speechOutput = "You used "+countSyllables(rapLine)+" beats. You need more practice.";
+                callback(session.attributes, buildSpeechletResponse(CARD_TITLE, speechOutput, speechOutput, true));
+            }
             return;
         }
         session.attributes.userHaiku.push(rapLine);
@@ -448,6 +456,7 @@ function handleAnswerRequest(intent, session, callback) {
                     session.attributes.speechOutput = speechOutput;
                     session.attributes.repromptText = repromptText;
                     session.attributes.currentLine++;
+                    session.attributes.retries = 0;
                     callback(session.attributes, buildSpeechletResponse(CARD_TITLE, speechOutput, repromptText, true));
                 })
             });
@@ -456,6 +465,7 @@ function handleAnswerRequest(intent, session, callback) {
             session.attributes.speechOutput = successOutput;
             session.attributes.repromptText = repromptText;
             session.attributes.currentLine++;
+            session.attributes.retries = 0;
             callback(session.attributes, buildSpeechletResponse(CARD_TITLE, successOutput, repromptText, false));
         }
     }
