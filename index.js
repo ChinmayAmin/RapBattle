@@ -299,7 +299,7 @@ function generatePlayerCountMessage(greetPlayer, session, callback) {
         speechOutput = "Welcome " + previousPlayer.name + ", " + welcomeMessage + ". ";
     }
     else {
-        speechOutput = 'Welcome to Rap Battle!';
+        speechOutput = 'Welcome to Rap Battle! ';
     }
     speechOutput += "How many players are there?";
     session.attributes.speechOutput = speechOutput;
