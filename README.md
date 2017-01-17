@@ -1,5 +1,27 @@
 # CLHACK
 
+## Setup
+
+You must use the same developer account that the Alexa is logged into. Ask Alexa "Who am I?" to hear the account name. Currently the office Alexa is logged into cl+it@connectedlab.com
+
+Login to Alexa to see its latest interactions:
+
+http://alexa.amazon.com/spa/index.html
+
+Use the Developer profile to edit skills (same account as Alexa is logged into):
+
+https://developer.amazon.com/edw/home.html#/skills/list
+
+The Amazon web service that the skills are pointing to are under this account:
+
+## Skills
+
+`Alexa open Rap King`
+
+`Alexa open Haiku Battle`
+
+## Testing
+
 test with
 
 ```
