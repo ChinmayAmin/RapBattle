@@ -12,7 +12,9 @@ Use the Developer profile to edit skills (same account as Alexa is logged into):
 
 https://developer.amazon.com/edw/home.html#/skills/list
 
-The Amazon web service that the skills are pointing to are under this account:
+The Amazon web service that the skills are pointing to are under josh.allen.it@gmail.com
+
+https://console.aws.amazon.com/lambda/home?region=us-east-1#/functions?display=list
 
 ## Skills
 
